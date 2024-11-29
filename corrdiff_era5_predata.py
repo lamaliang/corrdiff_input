@@ -1,38 +1,54 @@
+import os
+import zarr
 import xarray as xr
 import pandas as pd
 import numpy as np
-import os
-import dask.array as da
-import zarr
-from dask.diagnostics import ProgressBar
 import xesmf as xe
+import dask.array as da
+from dask.diagnostics import ProgressBar
 
-
-
+##
+# Configuration
+##
 iStrt = 20180101
 iLast = 20180111
 yr = str(iStrt)[:4]
-time = slice(str(iStrt),str(iLast))
+time = slice(str(iStrt), str(iLast))
 yyyymm = str(iStrt)[:6]
-plevs = [1000, 925, 850, 700, 500]
+pressure_levels = [1000, 925, 850, 700, 500]
 
+LOCAL = True
+data_path = {
+    # LOCAL
+    "cwa_ref": "./data/cwa_dataset_example.zarr",
+    "tread": f"./data/wrfo2D_d02_{yyyymm}.nc",
+    "era5": "./data/",
+} if LOCAL else {
+    # REMOTE
+    "cwa_ref": "/lfs/home/dadm/data/cwa_dataset.zarr",
+    "tread": f"/lfs/archive/TCCIP_data/TReAD/SFC/hr/wrfo2D_d02_{yyyymm}.nc",
+    "era5": "/lfs/archive/Reanalysis/ERA5",
+}
 
-# CWA Reference data
-cwa = xr.open_zarr('./data/cwa_dataset_example.zarr')
+##
+# CWA data as reference
+##
+cwa = xr.open_zarr(data_path["cwa_ref"])
 lat_cwa = cwa.XLAT
 lon_cwa = cwa.XLONG
-grid_cwa = xr.Dataset({"lat": lat_cwa,"lon": lon_cwa,})
+grid_cwa = xr.Dataset({ "lat": lat_cwa, "lon": lon_cwa })
 
 
-# === TCCIP TReAD data ===
-ifnS = f"./data/wrfo2D_d02_{yyyymm}.nc"
+##
+# TCCIP TReAD data
+##
+ifnS = data_path["tread"]
 sfcvars = ['RAINC', 'RAINNC', 'T2', 'U10', 'V10']
 
 stime = pd.to_datetime(str(iStrt), format='%Y%m%d')
 etime = pd.to_datetime(str(iLast), format='%Y%m%d')
 
-
-# --- Read Surface level data ---
+# Read surface level data.
 td_sfc = xr.open_mfdataset(
     ifnS,
     preprocess=lambda ds: ds[sfcvars].assign_coords(
@@ -40,38 +56,33 @@ td_sfc = xr.open_mfdataset(
     ).sel(time=slice(stime, etime))
 )
 
-
-# --- Calculus daily mean for T2,U10,V10 ; TP = RAINC+RAINNC and calculus daily accumulation ---
+# Calculate daily mean for T2, U10, and V10. Also sum TP = RAINC+RAINNC and accumulate daily.
 tccip = td_sfc[['T2', 'U10', 'V10']].resample(time='1D').mean()
 tccip['TP'] = (td_sfc['RAINC'] + td_sfc['RAINNC']).resample(time='1D').sum()
 tccip = tccip[['TP', 'T2', 'U10', 'V10']]
 
-variable_mapping = {
+tccip = tccip.rename({
     "TP": "precipitation",
     "T2": "temperature_2m",
     "U10": "eastward_wind_10m",
     "V10": "northward_wind_10m",
-}
+})
 
-
-tccip = tccip.rename(variable_mapping)
-
-
-# --- Regridding to CWA coordinate ---
+# Regrid to CWA coordinates.
 tccip_remap = xe.Regridder(tccip, grid_cwa, method="bilinear")
 tccip_cwb = tccip_remap(tccip)
 
-# replace 0 to nan due to TReAD domain is smaller than CWB_Zarr
-fill_value = np.nan  
-
+# Replace 0 to nan for TReAD domain is smaller than CWB_Zarr.
+fill_value = np.nan
 tccip_cwb["temperature_2m"] = tccip_cwb["temperature_2m"].where(tccip_cwb["temperature_2m"] != 0, fill_value)
 tccip_cwb["temperature_2m"].attrs["_FillValue"] = fill_value
 
-
-# === ERA5 data ===
-indir = './data'
-prsvars = ['u','v','t','r','z']
-sfcvars = ['msl','tp','t2m','u10','v10']
+##
+# ERA5 data
+##
+indir = data_path["era5"]
+prsvars = ['u', 'v', 't', 'r', 'z']
+sfcvars = ['msl', 'tp', 't2m', 'u10', 'v10']
 
 def get_file_prs_paths(variables, subfolder):
     return [
@@ -91,24 +102,21 @@ def get_file_sfc_paths(variables, subfolder):
         for var in variables for month in range(1, 13)
     ]
 
+era5_prs = xr.open_mfdataset(get_file_prs_paths(prsvars, "day"), combine='by_coords').sel(level=pressure_levels, time=time)
+era5_sfc = xr.open_mfdataset(get_file_sfc_paths(sfcvars, "day"), combine='by_coords').sel(time=time)
+era5_topo = xr.open_mfdataset(data_path["era5"] + "/ERA5_oro_r1440x721.nc")[['oro']]
 
-era5_prs = xr.open_mfdataset(get_file_prs_paths(prsvars, "day"),combine='by_coords').sel(level=plevs, time=time)
-era5_sfc = xr.open_mfdataset(get_file_sfc_paths(sfcvars, "day"),combine='by_coords',).sel(time=time)
-era5_topo = xr.open_mfdataset("./data/ERA5_oro_r1440x721.nc")[['oro']]
-
-
-# -- units convert ---
+# Convert units.
 era5_sfc['tp'] = era5_sfc['tp'] * 24 * 1000
 era5_sfc['tp'].attrs['units'] = 'mm/day'
 era5_topo = era5_topo.expand_dims(time=era5_sfc.time)
 era5_topo = era5_topo.reindex(time=era5_sfc.time)
 
-
-# --- Merge prs,sfc,topo ---
+# Merge prs, sfc, topo.
 era5 = xr.merge([era5_prs, era5_sfc, era5_topo])
 
-# --- Rename ---
-variable_mapping = {
+# Rename variables.
+era5 = era5.rename({
     "u": "eastward_wind",
     "v": "northward_wind",
     "t": "temperature",
@@ -120,17 +128,13 @@ variable_mapping = {
     "v10": "northward_wind_10m",
     "tp" : "precipitation",
     "oro": "terrain_height"
-}
+})
 
-era5 = era5.rename(variable_mapping)
-
-
-# --- Regridding to CWA coordinate ---
+# Regrid to CWA coordinate.
 era5_remap = xe.Regridder(era5, grid_cwa, method="bilinear")
 era5_cwb = era5_remap(era5)
 
-
-# --- Copy coordinate (latitude and longitude) ---
+# Copy coordinates "latitude" and "longitude").
 coord_list = ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
 coords = {key: cwa.coords[key] for key in coord_list}
 XTIME = np.datetime64("2024-11-26 15:00:00", "ns")
@@ -159,8 +163,7 @@ cwb_variable = xr.DataArray(
     name="cwb_variable"
 )
 
-
-# define cwb
+# Define cwb
 stack_cwb = da.stack([tccip_cwb[var].data for var in cwb_vnames], axis=1)
 south_north_coords = tccip_cwb["south_north"]
 west_east_coords = tccip_cwb["west_east"]
@@ -182,8 +185,7 @@ cwb = xr.DataArray(
     name="cwb"
 )
 
-
-# Calculus cwb_center (mean)
+# Calculate cwb_center (mean)
 tccip_cwb_mean = da.stack(
     [tccip_cwb[var_name].mean(dim=["time", "south_north", "west_east"]).data for var_name in cwb_variable.values],
     axis=0
@@ -201,7 +203,7 @@ cwb_center = xr.DataArray(
 )
 
 
-# Calculus cwb_scale (std)
+# Calculate cwb_scale (std)
 tccip_cwb_std = da.stack(
     [tccip_cwb[var_name].std(dim=["time", "south_north", "west_east"]).data for var_name in cwb_variable.values],
     axis=0
@@ -219,9 +221,8 @@ cwb_scale = xr.DataArray(
 )
 
 
-# define cwb_valid
+# Define cwb_valid
 valid = True  
-
 cwb_valid = xr.DataArray(
     data=da.from_array([valid] * len(tccip_cwb["time"]), chunks=(len(tccip_cwb["time"]),)),
     dims=["time"],
@@ -233,10 +234,10 @@ cwb_valid = xr.DataArray(
 )
 
 
-#ERA5 write
+# ERA5 write
 era5_channel = np.arange(31)
-plevs = [1000, 925, 850, 700, 500]  
-era5_pressure_values = np.tile(plevs, 5) 
+pressure_levels = [1000, 925, 850, 700, 500]  
+era5_pressure_values = np.tile(pressure_levels, 5) 
 era5_pressure_values = np.append(era5_pressure_values, [np.nan] * 6) 
 
 era5_variables_values = [
@@ -256,8 +257,7 @@ stack_era5 = da.stack(
     axis=1
 )
 
-
-# define era5
+# Define era5
 era5 = xr.DataArray(
     stack_era5,
     dims=["time", "era5_channel", "south_north", "west_east"],
@@ -276,7 +276,7 @@ era5 = xr.DataArray(
 )
 
 
-# Calculus era5_center (mean)
+# Calculate era5_center (mean)
 era5_mean = da.stack(
     [
         era5.isel(era5_channel=channel).mean(dim=["time", "south_north", "west_east"]).data
@@ -285,7 +285,7 @@ era5_mean = da.stack(
     axis=0
 )
 
-# define era5_center
+# Define era5_center
 era5_center = xr.DataArray(
     era5_mean,
     dims=["era5_channel"],
@@ -298,7 +298,7 @@ era5_center = xr.DataArray(
 )
 
 
-# Calculus era5_scale (std)
+# Calculate era5_scale (std)
 era5_std = da.stack(
     [
         era5.isel(era5_channel=channel).std(dim=["time", "south_north", "west_east"]).data
@@ -307,7 +307,7 @@ era5_std = da.stack(
     axis=0
 )
 
-# define era5_scale
+# Define era5_scale
 era5_scale = xr.DataArray(
     era5_std,
     dims=["era5_channel"],
@@ -319,8 +319,7 @@ era5_scale = xr.DataArray(
     name="era5_scale"
 )
 
-
-# define era5_valid
+# Define era5_valid
 era5_valid = xr.DataArray(
     data=True,
     dims=["time", "era5_channel"],
@@ -333,7 +332,6 @@ era5_valid = xr.DataArray(
     },
     name="era5_valid"
 )
-
 
 # output to the new file 
 # Copy cwb coordinate and write new cwb and era5 data
@@ -361,12 +359,11 @@ out = out.reset_coords("cwb_channel", drop=True) if "cwb_channel" in out.coords 
 out.coords["era5_scale"] = ("era5_channel", era5_scale.data)
 
 
-# write cwb data variables
+# Write cwb data variables
 out["cwb"] = cwb
 out["cwb_center"] = cwb_center
 out["cwb_scale"] = cwb_scale
 out["cwb_valid"] = cwb_valid
-
 
 out["era5"] = era5
 out["era5_center"] = era5_center
