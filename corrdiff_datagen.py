@@ -344,27 +344,30 @@ def generate_output_dataset(tread_out, era5_out, coords_cwa):
     )
 
     out = out.assign_coords(cwb_variable=cwb_variable)
-    out = out.reset_coords("cwb_channel", drop=True) if "cwb_channel" in out.coords else out
+    # TODO: check necessity
+    # out = out.reset_coords("cwb_channel", drop=True) if "cwb_channel" in out.coords else out
+    out.coords["era5_scale"] = ("era5_channel", era5_scale.data)
 
     # Write cwb & era5 data
     out["cwb"] = cwb
     out["cwb_center"] = cwb_center
     out["cwb_scale"] = cwb_scale
     out["cwb_valid"] = cwb_valid
-
     out["era5"] = era5
     out["era5_center"] = era5_center
     out["era5_valid"] = era5_valid
-    out.coords["era5_scale"] = ("era5_channel", era5_scale.data)
 
     out = out.drop_vars(["south_north", "west_east"])
     out = out.drop_vars(["cwb_channel", "era5_channel"])
+    print(out)
 
     return out
 
 def write_to_zarr(out_path, out_ds):
     comp = zarr.Blosc(cname='zstd', clevel=3, shuffle=2)
     encoding = { var: {'compressor': comp} for var in out_ds.data_vars }
+
+    print('\n')
     with ProgressBar():
         out.to_zarr(out_path, mode='w', encoding=encoding, compute=True)
 
