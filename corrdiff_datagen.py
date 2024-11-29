@@ -249,7 +249,7 @@ def generate_era5_output(era5_out):
     stack_era5 = da.stack(
         [
             era5_out[var].sel(level=plev).data if "level" in era5_out[var].dims else era5_out[var].data
-            for var, plev in zip(era5_variables_values, era5_pressure_values)
+            for plev, var in zip(era5_pressure_values, era5_variables_values)
         ],
         axis=1
     )
@@ -376,8 +376,8 @@ def generate_output_dataset(tread_out, era5_out, coords_cwa):
 def write_to_zarr(out_path, out_ds):
     comp = zarr.Blosc(cname='zstd', clevel=3, shuffle=2)
     encoding = { var: {'compressor': comp} for var in out_ds.data_vars }
-    # with ProgressBar():
-    #     out.to_zarr(out_path, mode='w', encoding=encoding, compute=True)
+    with ProgressBar():
+        out.to_zarr(out_path, mode='w', encoding=encoding, compute=True)
 
     print(f"Data successfully saved to [{out_path}]")
 
