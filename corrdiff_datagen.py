@@ -369,6 +369,7 @@ def generate_output_dataset(tread_out, era5_out, coords_cwa):
     out.coords["era5_scale"] = ("era5_channel", era5_scale.data)
 
     out = out.drop_vars(["south_north", "west_east"])
+    out = out.drop_vars(["cwb_channel", "era5_channel"])
 
     return out
 
