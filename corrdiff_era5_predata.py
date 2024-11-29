@@ -10,57 +10,54 @@ from dask.diagnostics import ProgressBar
 ##
 # Configuration
 ##
-iStrt = 20180101
-iLast = 20180111
-yr = str(iStrt)[:4]
-time = slice(str(iStrt), str(iLast))
-yyyymm = str(iStrt)[:6]
-pressure_levels = [1000, 925, 850, 700, 500]
+iStart = 20180101
+iLast = 20180103
+
+year = str(iStart)[:4]
+duration = slice(str(iStart), str(iLast))
+yyyymm = str(iStart)[:6]
 
 LOCAL = True
 data_path = {
     # LOCAL
     "cwa_ref": "./data/cwa_dataset_example.zarr",
-    "tread": f"./data/wrfo2D_d02_{yyyymm}.nc",
-    "era5": "./data/",
+    "tread_file": f"./data/wrfo2D_d02_{yyyymm}.nc",
+    "era5_dir": "./data",
 } if LOCAL else {
     # REMOTE
     "cwa_ref": "/lfs/home/dadm/data/cwa_dataset.zarr",
-    "tread": f"/lfs/archive/TCCIP_data/TReAD/SFC/hr/wrfo2D_d02_{yyyymm}.nc",
-    "era5": "/lfs/archive/Reanalysis/ERA5",
+    "tread_file": f"/lfs/archive/TCCIP_data/TReAD/SFC/hr/wrfo2D_d02_{yyyymm}.nc",
+    "era5_dir": "/lfs/archive/Reanalysis/ERA5",
 }
 
 ##
-# CWA data as reference
+# Grid of CorrDiff data as reference
 ##
 cwa = xr.open_zarr(data_path["cwa_ref"])
-lat_cwa = cwa.XLAT
-lon_cwa = cwa.XLONG
-grid_cwa = xr.Dataset({ "lat": lat_cwa, "lon": lon_cwa })
-
+grid_cwa = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
 
 ##
 # TCCIP TReAD data
 ##
-ifnS = data_path["tread"]
+tread_file = data_path["tread_file"]
 sfcvars = ['RAINC', 'RAINNC', 'T2', 'U10', 'V10']
 
-stime = pd.to_datetime(str(iStrt), format='%Y%m%d')
-etime = pd.to_datetime(str(iLast), format='%Y%m%d')
+start_datetime = pd.to_datetime(str(iStart), format='%Y%m%d')
+end_datetime = pd.to_datetime(str(iLast), format='%Y%m%d')
 
 # Read surface level data.
 td_sfc = xr.open_mfdataset(
-    ifnS,
+    tread_file,
     preprocess=lambda ds: ds[sfcvars].assign_coords(
         time=pd.to_datetime(ds['Time'].values.astype(str), format='%Y-%m-%d_%H:%M:%S')
-    ).sel(time=slice(stime, etime))
+    ).sel(time=slice(start_datetime, end_datetime))
 )
 
 # Calculate daily mean for T2, U10, and V10. Also sum TP = RAINC+RAINNC and accumulate daily.
 tccip = td_sfc[['T2', 'U10', 'V10']].resample(time='1D').mean()
 tccip['TP'] = (td_sfc['RAINC'] + td_sfc['RAINNC']).resample(time='1D').sum()
-tccip = tccip[['TP', 'T2', 'U10', 'V10']]
 
+tccip = tccip[['TP', 'T2', 'U10', 'V10']]
 tccip = tccip.rename({
     "TP": "precipitation",
     "T2": "temperature_2m",
@@ -85,21 +82,21 @@ tccip_cwb["temperature_2m"].attrs["_FillValue"] = fill_value
 ##
 # ERA5 data
 ##
-indir = data_path["era5"]
+era5_dir = data_path["era5_dir"]
 prsvars = ['u', 'v', 't', 'r', 'z']
 sfcvars = ['msl', 'tp', 't2m', 'u10', 'v10']
 
 def get_file_prs_paths(variables, subfolder):
     if LOCAL:
         return [
-            os.path.join(indir, f"./ERA5_PRS_{var}_201801_r1440x721_day.nc")
+            os.path.join(era5_dir, f"./ERA5_PRS_{var}_201801_r1440x721_day.nc")
             for var in variables
         ]
 
     return [
         os.path.join(
-            indir, "PRS", subfolder, var, str(yr),
-            f"ERA5_PRS_{var}_{yr}{month:02d}_r1440x721_day.nc"
+            era5_dir, "PRS", subfolder, var, str(year),
+            f"ERA5_PRS_{var}_{year}{month:02d}_r1440x721_day.nc"
         )
         for var in variables for month in range(1, 13)
     ]
@@ -107,21 +104,22 @@ def get_file_prs_paths(variables, subfolder):
 def get_file_sfc_paths(variables, subfolder):
     if LOCAL:
         return [
-            os.path.join(indir, f"./ERA5_SFC_{var}_201801_r1440x721_day.nc")
+            os.path.join(era5_dir, f"./ERA5_SFC_{var}_201801_r1440x721_day.nc")
             for var in variables
         ]
 
     return [
         os.path.join(
-            indir, "SFC", subfolder, var, str(yr),
-            f"ERA5_SFC_{var}_{yr}{month:02d}_r1440x721_day.nc"
+            era5_dir, "SFC", subfolder, var, str(year),
+            f"ERA5_SFC_{var}_{year}{month:02d}_r1440x721_day.nc"
         )
         for var in variables for month in range(1, 13)
     ]
 
-era5_prs = xr.open_mfdataset(get_file_prs_paths(prsvars, "day"), combine='by_coords').sel(level=pressure_levels, time=time)
-era5_sfc = xr.open_mfdataset(get_file_sfc_paths(sfcvars, "day"), combine='by_coords').sel(time=time)
-era5_topo = xr.open_mfdataset(data_path["era5"] + "/ERA5_oro_r1440x721.nc")[['oro']]
+pressure_levels = [1000, 925, 850, 700, 500]
+era5_prs = xr.open_mfdataset(get_file_prs_paths(prsvars, "day"), combine='by_coords').sel(level=pressure_levels, time=duration)
+era5_sfc = xr.open_mfdataset(get_file_sfc_paths(sfcvars, "day"), combine='by_coords').sel(time=duration)
+era5_topo = xr.open_mfdataset(era5_dir + "/ERA5_oro_r1440x721.nc")[['oro']]
 
 # Convert units.
 era5_sfc['tp'] = era5_sfc['tp'] * 24 * 1000
@@ -263,7 +261,6 @@ cwb_valid = xr.DataArray(
 ## ERA5
 
 era5_channel = np.arange(31)
-pressure_levels = [1000, 925, 850, 700, 500]  
 era5_pressure_values = np.tile(pressure_levels, 5) 
 era5_pressure_values = np.append(era5_pressure_values, [np.nan] * 6) 
 
@@ -398,7 +395,7 @@ out = out.drop_vars(["south_north", "west_east"])
 comp = zarr.Blosc(cname='zstd', clevel=3, shuffle=2)
 encoding = { var: {'compressor': comp} for var in out.data_vars }
 
-outpath = 'corrdiff_testing.zarr'
+outpath = f"corrdiff_dataset_{iStart}_{iLast}.zarr"
 with ProgressBar():
     out.to_zarr(outpath, mode='w', encoding=encoding, compute=True)
 
