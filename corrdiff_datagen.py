@@ -101,16 +101,21 @@ def get_tread_dataset(tread_file):
 
 def get_era5_dataset(era5_dir):
     pressure_level_vars = ['z', 'u', 'v', 't', 'r']
-    surfact_vars = ['msl', 'tp', 't2m', 'u10', 'v10']
+    surface_vars = ['msl', 'tp', 't2m', 'u10', 'v10']
 
+    # pressure_level
     duration = slice(str(iStart), str(iLast))
-    era5_prs = xr.open_mfdataset(get_era5_prs_paths(era5_dir, "day", pressure_level_vars), combine='by_coords').sel(level=pressure_levels, time=duration)
-    era5_sfc = xr.open_mfdataset(get_era5_sfc_paths(era5_dir, "day", surfact_vars), combine='by_coords').sel(time=duration)
-    era5_topo = xr.open_mfdataset(era5_dir + "/ERA5_oro_r1440x721.nc")[['oro']]
+    prs_paths = get_era5_prs_paths(era5_dir, "day", pressure_level_vars)
+    era5_prs = xr.open_mfdataset(prs_paths, combine='by_coords').sel(level=pressure_levels, time=duration)
 
-    # Convert units.
+    # surface
+    sfc_paths = get_era5_sfc_paths(era5_dir, "day", surface_vars)
+    era5_sfc = xr.open_mfdataset(sfc_paths, combine='by_coords').sel(time=duration)
     era5_sfc['tp'] = era5_sfc['tp'] * 24 * 1000
-    era5_sfc['tp'].attrs['units'] = 'mm/day'
+    era5_sfc['tp'].attrs['units'] = 'mm/day' # Convert unit
+
+    # orography
+    era5_topo = xr.open_mfdataset(era5_dir + "/ERA5_oro_r1440x721.nc")[['oro']]
     era5_topo = era5_topo.expand_dims(time=era5_sfc.time)
     era5_topo = era5_topo.reindex(time=era5_sfc.time)
 
@@ -166,17 +171,14 @@ def generate_tread_output(tread_out, XTIME):
 
     # cwb
     stack_tread = da.stack([tread_out[var].data for var in cwb_var_names], axis=1)
-    south_north_coords = tread_out["south_north"]
-    west_east_coords = tread_out["west_east"]
-
     cwb = xr.DataArray(
         stack_tread,
         dims=["time", "cwb_channel", "south_north", "west_east"],
         coords={
             "time": tread_out["time"],
             "cwb_channel": cwb_channel,
-            "south_north": south_north_coords,
-            "west_east": west_east_coords,
+            "south_north": tread_out["south_north"],
+            "west_east": tread_out["west_east"],
             "XLAT": tread_out["XLAT"],
             "XLONG": tread_out["XLONG"],
             "XTIME": XTIME,
