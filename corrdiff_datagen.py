@@ -162,10 +162,7 @@ def generate_tread_output(tread_out, XTIME):
     cwb_variable = xr.DataArray(
         cwb_vars_dask,
         dims=["cwb_channel"],
-        coords={
-            "XTIME": ("cwb_channel", [XTIME] * len(cwb_channel)),
-            "cwb_pressure": cwb_pressure
-        },
+        coords={"cwb_pressure": cwb_pressure},
         name="cwb_variable"
     )
 
@@ -181,7 +178,6 @@ def generate_tread_output(tread_out, XTIME):
             "west_east": tread_out["west_east"],
             "XLAT": tread_out["XLAT"],
             "XLONG": tread_out["XLONG"],
-            "XTIME": XTIME,
             "cwb_pressure": cwb_pressure,
             "cwb_variable": cwb_variable,
         },
@@ -197,7 +193,6 @@ def generate_tread_output(tread_out, XTIME):
         tread_mean,
         dims=["cwb_channel"],
         coords={
-            "XTIME": XTIME,
             "cwb_pressure": cwb_pressure,
             "cwb_variable": cwb_variable
         },
@@ -213,7 +208,6 @@ def generate_tread_output(tread_out, XTIME):
         tread_std,
         dims=["cwb_channel"],
         coords={
-            "XTIME": tread_out["XTIME"],
             "cwb_pressure": cwb_pressure,
             "cwb_variable": cwb_variable
         },
@@ -225,10 +219,7 @@ def generate_tread_output(tread_out, XTIME):
     cwb_valid = xr.DataArray(
         data=da.from_array([valid] * len(tread_out["time"]), chunks=(len(tread_out["time"]),)),
         dims=["time"],
-        coords={
-            "time": tread_out["time"],
-            "XTIME": XTIME
-        },
+        coords={"time": cwb["time"]},
         name="cwb_valid"
     )
 
@@ -267,7 +258,6 @@ def generate_era5_output(era5_out):
             "west_east": era5_out["west_east"],
             "XLAT": era5_out["XLAT"],
             "XLONG": era5_out["XLONG"],
-            "XTIME": era5_out["XTIME"],
             "era5_pressure": xr.DataArray(era5_pressure_values, dims=["era5_channel"], coords={"era5_channel": era5_channel}),
             "era5_variable": xr.DataArray(era5_variables_values, dims=["era5_channel"], coords={"era5_channel": era5_channel}),
         },
@@ -286,7 +276,6 @@ def generate_era5_output(era5_out):
         era5_mean,
         dims=["era5_channel"],
         coords={
-            "XTIME": era5["XTIME"],
             "era5_pressure": era5["era5_pressure"],
             "era5_variable": era5["era5_variable"]
         },
@@ -305,7 +294,6 @@ def generate_era5_output(era5_out):
         era5_std,
         dims=["era5_channel"],
         coords={
-            "XTIME": era5["XTIME"],
             "era5_pressure": era5["era5_pressure"],
             "era5_variable": era5["era5_variable"]
         },
@@ -319,7 +307,6 @@ def generate_era5_output(era5_out):
         coords={
             "time": era5["time"],
             "era5_channel": era5["era5_channel"],
-            "XTIME": era5["XTIME"],
             "era5_pressure": era5["era5_pressure"],
             "era5_variable": era5["era5_variable"]
         },
