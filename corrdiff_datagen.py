@@ -100,7 +100,7 @@ def get_tread_dataset(tread_file):
     return tread_out
 
 def get_era5_dataset(era5_dir):
-    pressure_level_vars = ['u', 'v', 't', 'r', 'z']
+    pressure_level_vars = ['z', 'u', 'v', 't', 'r']
     surfact_vars = ['msl', 'tp', 't2m', 'u10', 'v10']
 
     duration = slice(str(iStart), str(iLast))
@@ -116,11 +116,11 @@ def get_era5_dataset(era5_dir):
 
     # Merge prs, sfc, topo and rename variables.
     era5 = xr.merge([era5_prs, era5_sfc, era5_topo]).rename({
+        "z": "geopotential_height",
         "u": "eastward_wind",
         "v": "northward_wind",
         "t": "temperature",
         "r": "relative_humidity",
-        "z": "geopotential_height",
         "msl": "mean_sea_level_pressure",
         "t2m": "temperature_2m",
         "u10": "eastward_wind_10m",
@@ -234,22 +234,22 @@ def generate_tread_output(tread_out, XTIME):
 
 def generate_era5_output(era5_out):
     era5_channel = np.arange(31)
-    era5_pressure_values = np.tile(pressure_levels, 5) 
+    era5_pressure_values = np.repeat(pressure_levels, 5)
     era5_pressure_values = np.append(era5_pressure_values, [np.nan] * 6) 
 
     era5_variables_values = [
-        'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity', 'geopotential_height',
-        'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity', 'geopotential_height',
-        'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity', 'geopotential_height',
-        'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity', 'geopotential_height',
-        'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity', 'geopotential_height',
+        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
+        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
+        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
+        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
+        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
         'mean_sea_level_pressure', 'precipitation', 'temperature_2m', 'eastward_wind_10m', 'northward_wind_10m', 'terrain_height'
     ]
 
     stack_era5 = da.stack(
         [
             era5_out[var].sel(level=plev).data if "level" in era5_out[var].dims else era5_out[var].data
-            for plev, var in zip(era5_pressure_values, era5_variables_values)
+            for var, plev in zip(era5_variables_values, era5_pressure_values)
         ],
         axis=1
     )
