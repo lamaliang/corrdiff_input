@@ -279,7 +279,7 @@ era5_variables_values = [
 stack_era5 = da.stack(
     [
         era5_cwb[var].sel(level=plev).data if "level" in era5_cwb[var].dims else era5_cwb[var].data
-        for plev, var in zip(era5_variables_values, era5_pressure_values)
+        for var, plev in zip(era5_variables_values, era5_pressure_values)
     ],
     axis=1
 )
