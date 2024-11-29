@@ -70,7 +70,20 @@ tccip = tccip.rename({
 
 # Regrid to CWA coordinates.
 tccip_remap = xe.Regridder(tccip, grid_cwa, method="bilinear")
-tccip_cwb = tccip_remap(tccip)
+# Apply the regridder over the spatial dimensions for all timestamps
+# tccip_cwb = tccip_remap(tccip)
+tccip_cwb = xr.concat(
+    [tccip_remap(tccip.isel(time=i)) for i in range(tccip.sizes["time"])],
+    dim="time"
+)
+
+# TODO: handle XTIME after regridding
+# Coordinates:
+#   time                (time) datetime64[ns] 2018-01-01T01:00:00 ... 2018-01...
+#   XLAT                (south_north, west_east) float32 dask.array<chunksize=(225, 225), meta=np.ndarray>
+
+print("=== tccip_cwb ===")
+print(tccip_cwb)
 
 # Replace 0 to nan for TReAD domain is smaller than CWB_Zarr.
 fill_value = np.nan
