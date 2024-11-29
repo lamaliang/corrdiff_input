@@ -77,14 +77,6 @@ tccip_cwb = xr.concat(
     dim="time"
 )
 
-# TODO: handle XTIME after regridding
-# Coordinates:
-#   time                (time) datetime64[ns] 2018-01-01T01:00:00 ... 2018-01...
-#   XLAT                (south_north, west_east) float32 dask.array<chunksize=(225, 225), meta=np.ndarray>
-
-print("=== tccip_cwb ===")
-print(tccip_cwb)
-
 # Replace 0 to nan for TReAD domain is smaller than CWB_Zarr.
 fill_value = np.nan
 tccip_cwb["temperature_2m"] = tccip_cwb["temperature_2m"].where(tccip_cwb["temperature_2m"] != 0, fill_value)
@@ -100,9 +92,8 @@ sfcvars = ['msl', 'tp', 't2m', 'u10', 'v10']
 def get_file_prs_paths(variables, subfolder):
     if LOCAL:
         return [
-            os.path.join(
-                indir, f"./ERA5_PRS_{var}_201801_r1440x721_day.nc"
-            ) for var in variables
+            os.path.join(indir, f"./ERA5_PRS_{var}_201801_r1440x721_day.nc")
+            for var in variables
         ]
 
     return [
@@ -116,9 +107,8 @@ def get_file_prs_paths(variables, subfolder):
 def get_file_sfc_paths(variables, subfolder):
     if LOCAL:
         return [
-            os.path.join(
-                indir, f"./ERA5_SFC_{var}_201801_r1440x721_day.nc"
-            ) for var in variables
+            os.path.join(indir, f"./ERA5_SFC_{var}_201801_r1440x721_day.nc")
+            for var in variables
         ]
 
     return [
@@ -159,7 +149,16 @@ era5 = era5.rename({
 
 # Regrid to CWA coordinate.
 era5_remap = xe.Regridder(era5, grid_cwa, method="bilinear")
-era5_cwb = era5_remap(era5)
+# Apply the regridder over the spatial dimensions for all timestamps
+# era5_cwb = era5_remap(era5)
+era5_cwb = xr.concat(
+    [era5_remap(era5.isel(time=i)) for i in range(era5.sizes["time"])],
+    dim="time"
+)
+
+##
+# Output generation
+##
 
 # Copy coordinates "latitude" and "longitude").
 coord_list = ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
@@ -167,6 +166,9 @@ coords = {key: cwa.coords[key] for key in coord_list}
 XTIME = np.datetime64("2024-11-26 15:00:00", "ns")
 coords["XTIME"] = XTIME
 
+# CWB
+
+# cwb_pressure
 cwb_channel = np.arange(4)
 cwb_pressure = xr.DataArray(
     [np.nan, np.nan, np.nan, np.nan],
@@ -179,7 +181,7 @@ cwb_pressure = xr.DataArray(
 cwb_vnames = np.array(list(tccip.data_vars.keys()), dtype="<U26")
 cwb_vars_dask = da.from_array(cwb_vnames, chunks=(4,))
 
-# Now, define cwb_variable
+# cwb_variable
 cwb_variable = xr.DataArray(
     cwb_vars_dask,
     dims=["cwb_channel"],
@@ -190,7 +192,7 @@ cwb_variable = xr.DataArray(
     name="cwb_variable"
 )
 
-# Define cwb
+# cwb
 stack_cwb = da.stack([tccip_cwb[var].data for var in cwb_vnames], axis=1)
 south_north_coords = tccip_cwb["south_north"]
 west_east_coords = tccip_cwb["west_east"]
@@ -212,7 +214,7 @@ cwb = xr.DataArray(
     name="cwb"
 )
 
-# Calculate cwb_center (mean)
+# cwb_center
 tccip_cwb_mean = da.stack(
     [tccip_cwb[var_name].mean(dim=["time", "south_north", "west_east"]).data for var_name in cwb_variable.values],
     axis=0
@@ -229,8 +231,7 @@ cwb_center = xr.DataArray(
     name="cwb_center"
 )
 
-
-# Calculate cwb_scale (std)
+# cwb_scale
 tccip_cwb_std = da.stack(
     [tccip_cwb[var_name].std(dim=["time", "south_north", "west_east"]).data for var_name in cwb_variable.values],
     axis=0
@@ -247,8 +248,7 @@ cwb_scale = xr.DataArray(
     name="cwb_center"
 )
 
-
-# Define cwb_valid
+# cwb_valid
 valid = True  
 cwb_valid = xr.DataArray(
     data=da.from_array([valid] * len(tccip_cwb["time"]), chunks=(len(tccip_cwb["time"]),)),
@@ -260,8 +260,8 @@ cwb_valid = xr.DataArray(
     name="cwb_valid"
 )
 
+## ERA5
 
-# ERA5 write
 era5_channel = np.arange(31)
 pressure_levels = [1000, 925, 850, 700, 500]  
 era5_pressure_values = np.tile(pressure_levels, 5) 
@@ -284,7 +284,7 @@ stack_era5 = da.stack(
     axis=1
 )
 
-# Define era5
+# era5
 era5 = xr.DataArray(
     stack_era5,
     dims=["time", "era5_channel", "south_north", "west_east"],
@@ -302,8 +302,7 @@ era5 = xr.DataArray(
     name="era5"
 )
 
-
-# Calculate era5_center (mean)
+# era5_center
 era5_mean = da.stack(
     [
         era5.isel(era5_channel=channel).mean(dim=["time", "south_north", "west_east"]).data
@@ -312,7 +311,6 @@ era5_mean = da.stack(
     axis=0
 )
 
-# Define era5_center
 era5_center = xr.DataArray(
     era5_mean,
     dims=["era5_channel"],
@@ -325,7 +323,7 @@ era5_center = xr.DataArray(
 )
 
 
-# Calculate era5_scale (std)
+# era5_scale
 era5_std = da.stack(
     [
         era5.isel(era5_channel=channel).std(dim=["time", "south_north", "west_east"]).data
@@ -334,7 +332,6 @@ era5_std = da.stack(
     axis=0
 )
 
-# Define era5_scale
 era5_scale = xr.DataArray(
     era5_std,
     dims=["era5_channel"],
@@ -346,7 +343,7 @@ era5_scale = xr.DataArray(
     name="era5_scale"
 )
 
-# Define era5_valid
+# era5_valid
 era5_valid = xr.DataArray(
     data=True,
     dims=["time", "era5_channel"],
@@ -360,9 +357,9 @@ era5_valid = xr.DataArray(
     name="era5_valid"
 )
 
-# output to the new file 
-# Copy cwb coordinate and write new cwb and era5 data
-# remove old XTIME and replace to new 
+## Output to zarr file
+
+# Copy cwb coordinates and write new cwb and era5 coordinates; also replace XTIME with new coords.
 coords = {
     key: value.drop_vars("XTIME") if isinstance(value, (xr.DataArray, xr.Dataset)) and "XTIME" in value.coords else value
     for key, value in coords.items()
@@ -385,8 +382,7 @@ out = out.assign_coords(cwb_variable=cwb_variable)
 out = out.reset_coords("cwb_channel", drop=True) if "cwb_channel" in out.coords else out
 out.coords["era5_scale"] = ("era5_channel", era5_scale.data)
 
-
-# Write cwb data variables
+# Write cwb & era5 data variables
 out["cwb"] = cwb
 out["cwb_center"] = cwb_center
 out["cwb_scale"] = cwb_scale
@@ -396,16 +392,13 @@ out["era5"] = era5
 out["era5_center"] = era5_center
 out["era5_valid"] = era5_valid
 
-
 out = out.drop_vars(["south_north", "west_east"])
 
-
-# output zarr
+# Output to zarr
 comp = zarr.Blosc(cname='zstd', clevel=3, shuffle=2)
-encoding = {var: {'compressor': comp} for var in out.data_vars}
+encoding = { var: {'compressor': comp} for var in out.data_vars }
 
 outpath = 'corrdiff_testing.zarr'
-
 with ProgressBar():
     out.to_zarr(outpath, mode='w', encoding=encoding, compute=True)
 
