@@ -25,7 +25,7 @@ grid_cwa = xr.Dataset({"lat": lat_cwa,"lon": lon_cwa,})
 
 
 # === TCCIP TReAD data ===
-ifnS = f"./wrfo2D_d02_{yyyymm}.nc"
+ifnS = f"./data/wrfo2D_d02_{yyyymm}.nc"
 sfcvars = ['RAINC', 'RAINNC', 'T2', 'U10', 'V10']
 
 stime = pd.to_datetime(str(iStrt), format='%Y%m%d')
@@ -105,7 +105,7 @@ era5_topo = era5_topo.reindex(time=era5_sfc.time)
 
 
 # --- Merge prs,sfc,topo ---
-era5 = xr.merge([era5_prs,era5_sfc,era5_topo])
+era5 = xr.merge([era5_prs, era5_sfc, era5_topo])
 
 # --- Rename ---
 variable_mapping = {
@@ -251,7 +251,7 @@ era5_variables_values = [
 stack_era5 = da.stack(
     [
         era5_cwb[var].sel(level=plev).data if "level" in era5_cwb[var].dims else era5_cwb[var].data
-        for var, plev in zip(era5_variables_values, era5_pressure_values)
+        for plev, var in zip(era5_variables_values, era5_pressure_values)
     ],
     axis=1
 )
@@ -380,7 +380,7 @@ out = out.drop_vars(["south_north", "west_east"])
 comp = zarr.Blosc(cname='zstd', clevel=3, shuffle=2)
 encoding = {var: {'compressor': comp} for var in out.data_vars}
 
-outpath = 'corrdiff_testing_v241127.zarr'
+outpath = 'corrdiff_testing.zarr'
 
 with ProgressBar():
     out.to_zarr(outpath, mode='w', encoding=encoding, compute=True)

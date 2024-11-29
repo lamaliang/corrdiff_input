@@ -1,0 +1,40 @@
+input_channels:[
+    ChannelMetadata(name='eastward_winlsd', level='1000.0', auxiliary=False),
+    ChannelMetadata(name='northward_wind', level='925.0', auxiliary=False),
+    ChannelMetadata(name='temperature', level='850.0', auxiliary=False),
+    ChannelMetadata(name='relative_humidity', level='700.0', auxiliary=False),
+    ChannelMetadata(name='geopotential_height', level='500.0', auxiliary=False),
+    ChannelMetadata(name='eastward_wind', level='1000.0', auxiliary=False),
+    ChannelMetadata(name='northward_wind', level='925.0', auxiliary=False),
+    ChannelMetadata(name='temperature', level='850.0', auxiliary=False),
+    ChannelMetadata(name='relative_humidity', level='700.0', auxiliary=False),
+    ChannelMetadata(name='geopotential_height', level='500.0', auxiliary=False),
+    ChannelMetadata(name='eastward_wind', level='1000.0', auxiliary=False),
+    ChannelMetadata(name='northward_wind', level='925.0', auxiliary=False),
+    ChannelMetadata(name='temperature', level='850.0', auxiliary=False),
+    ChannelMetadata(name='relative_humidity', level='700.0', auxiliary=False),
+    ChannelMetadata(name='geopotential_height', level='500.0', auxiliary=False),
+    ChannelMetadata(name='eastward_wind', level='1000.0', auxiliary=False),
+    ChannelMetadata(name='northward_wind', level='925.0', auxiliary=False),
+    ChannelMetadata(name='temperature', level='850.0', auxiliary=False),
+    ChannelMetadata(name='relative_humidity', level='700.0', auxiliary=False),
+    ChannelMetadata(name='geopotential_height', level='500.0', auxiliary=False),
+    ChannelMetadata(name='eastward_wind', level='1000.0', auxiliary=False),
+    ChannelMetadata(name='northward_wind', level='925.0', auxiliary=False),
+    ChannelMetadata(name='temperature', level='850.0', auxiliary=False),
+    ChannelMetadata(name='relative_humidity', level='700.0', auxiliary=False),
+    ChannelMetadata(name='geopotential_height', level='500.0', auxiliary=False),
+    ChannelMetadata(name='mean_sea_level_pressure', level='', auxiliary=False),
+    ChannelMetadata(name='precipitation', level='', auxiliary=False),
+    ChannelMetadata(name='temperature_2m', level='', auxiliary=False),
+    ChannelMetadata(name='eastward_wind_10m', level='', auxiliary=False),
+    ChannelMetadata(name='northward_wind_10m', level='', auxiliary=False),
+    ChannelMetadata(name='terrain_height', level='', auxiliary=False)
+]
+
+output_channels:[
+    ChannelMetadata(name='precipitation', level='', auxiliary=False),
+    ChannelMetadata(name='temperature_2m', level='', auxiliary=False)
+    ChannelMetadata(name='eastward_wind_10m', level='', auxiliary=False),
+    ChannelMetadata(name='northward_wind_10m', level='', auxiliary=False)
+]
