@@ -10,6 +10,7 @@ from dask.diagnostics import ProgressBar
 ##
 # Configuration
 ##
+
 iStart = 20180101
 iLast = 20180103
 pressure_levels = [1000, 925, 850, 700, 500]
@@ -137,18 +138,16 @@ def get_tread_dataset():
         dim="time"
     )
 
-    # Replace 0 to nan for TReAD domain is smaller than CWB_Zarr.
+    # Replace 0 to nan for TReAD domain is smaller than CWB_zarr.
     fill_value = np.nan
     tccip_cwb["temperature_2m"] = tccip_cwb["temperature_2m"].where(tccip_cwb["temperature_2m"] != 0, fill_value)
     tccip_cwb["temperature_2m"].attrs["_FillValue"] = fill_value
 
-    return tccip, tccip_cwb
+    return tccip_cwb
 
-def generate_output_dataset():
-    # Copy coordinates "latitude" and "longitude").
-    coord_list = ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
-    coords = { key: cwa.coords[key] for key in coord_list }
+def generate_output_dataset(tccip_cwb, era5_cwb, coords_cwa):
     XTIME = np.datetime64("2024-11-26 15:00:00", "ns")
+    coords = coords_cwa
     coords["XTIME"] = XTIME
 
     # CWB
@@ -163,7 +162,7 @@ def generate_output_dataset():
     )
 
     # Define variable names and create DataArray for cwb_variable
-    cwb_vnames = np.array(list(tccip.data_vars.keys()), dtype="<U26")
+    cwb_vnames = np.array(list(tccip_cwb.data_vars.keys()), dtype="<U26")
     cwb_vars_dask = da.from_array(cwb_vnames, chunks=(4,))
 
     # cwb_variable
@@ -378,27 +377,30 @@ def generate_output_dataset():
 
     return out
 
+def write_to_zarr(out_path, out_ds):
+    comp = zarr.Blosc(cname='zstd', clevel=3, shuffle=2)
+    encoding = { var: {'compressor': comp} for var in out_ds.data_vars }
+    # with ProgressBar():
+    #     out.to_zarr(out_path, mode='w', encoding=encoding, compute=True)
+
+    print(f"Data successfully saved to [{out_path}]")
+
+
 ##
+# Main
+##
+
 # Grid of CorrDiff data as reference
-##
 cwa = xr.open_zarr(data_path["cwa_ref"])
 grid_cwa = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
 
-# TCCIP TReAD data
-tccip, tccip_cwb = get_tread_dataset()
-
-# ERA5 data
+tccip_cwb = get_tread_dataset()
 era5_cwb = get_era5_dataset()
 
-# Merge data into output dataset
-out = generate_output_dataset()
+# Copy coordinates "latitude" and "longitude"
+coord_list = ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
+coords_cwa = { key: cwa.coords[key] for key in coord_list }
 
-# Output to zarr
-outpath = f"corrdiff_dataset_{iStart}_{iLast}.zarr"
+out = generate_output_dataset(tccip_cwb, era5_cwb, coords_cwa)
 
-comp = zarr.Blosc(cname='zstd', clevel=3, shuffle=2)
-encoding = { var: {'compressor': comp} for var in out.data_vars }
-with ProgressBar():
-    out.to_zarr(outpath, mode='w', encoding=encoding, compute=True)
-
-print(f"Data successfully saved to [{outpath}]")
+write_to_zarr(f"corrdiff_dataset_{iStart}_{iLast}.zarr", out)
