@@ -98,6 +98,13 @@ prsvars = ['u', 'v', 't', 'r', 'z']
 sfcvars = ['msl', 'tp', 't2m', 'u10', 'v10']
 
 def get_file_prs_paths(variables, subfolder):
+    if LOCAL:
+        return [
+            os.path.join(
+                indir, f"./ERA5_PRS_{var}_201801_r1440x721_day.nc"
+            ) for var in variables
+        ]
+
     return [
         os.path.join(
             indir, "PRS", subfolder, var, str(yr),
@@ -107,6 +114,13 @@ def get_file_prs_paths(variables, subfolder):
     ]
 
 def get_file_sfc_paths(variables, subfolder):
+    if LOCAL:
+        return [
+            os.path.join(
+                indir, f"./ERA5_SFC_{var}_201801_r1440x721_day.nc"
+            ) for var in variables
+        ]
+
     return [
         os.path.join(
             indir, "SFC", subfolder, var, str(yr),
