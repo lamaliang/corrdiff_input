@@ -90,8 +90,7 @@ def generate_corrdiff_zarr(start_date, end_date):
 
     out = generate_output_dataset( \
             data_path["tread_file"], data_path["era5_dir"], \
-            grid, grid_coords, \
-            start_date, end_date)
+            grid, grid_coords, start_date, end_date)
 
     write_to_zarr(f"corrdiff_dataset_{start_date}_{end_date}.zarr", out)
 
