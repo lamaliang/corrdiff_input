@@ -10,12 +10,15 @@ pressure_levels = [1000, 925, 850, 700, 500]
 def isLocal(folder) -> bool:
     return "Reanalysis" not in str(folder) # TODO: Remove the hack
 
-def get_era5_prs_paths(folder, subfolder, variables, start_date):
+def get_prs_paths(folder, subfolder, variables, start_date):
     year = str(start_date)[:4]
+    if isLocal(folder):
+        return [
+            os.path.join(folder, f"./ERA5_PRS_{var}_201801_r1440x721_day.nc")
+            for var in variables
+        ]
+
     return [
-        os.path.join(folder, f"./ERA5_PRS_{var}_201801_r1440x721_day.nc")
-        for var in variables
-    ] if isLocal(folder) else [
         os.path.join(
             folder, "PRS", subfolder, var, str(year),
             f"ERA5_PRS_{var}_{year}{month:02d}_r1440x721_day.nc"
@@ -23,12 +26,15 @@ def get_era5_prs_paths(folder, subfolder, variables, start_date):
         for var in variables for month in range(1, 13)
     ]
 
-def get_era5_sfc_paths(folder, subfolder, variables, start_date):
+def get_sfc_paths(folder, subfolder, variables, start_date):
     year = str(start_date)[:4]
+    if isLocal(folder):
+        return [
+            os.path.join(folder, f"./ERA5_SFC_{var}_201801_r1440x721_day.nc")
+            for var in variables
+        ]
+
     return [
-        os.path.join(folder, f"./ERA5_SFC_{var}_201801_r1440x721_day.nc")
-        for var in variables
-    ] if isLocal(folder) else [
         os.path.join(
             folder, "SFC", subfolder, var, str(year),
             f"ERA5_SFC_{var}_{year}{month:02d}_r1440x721_day.nc"
@@ -42,11 +48,11 @@ def get_era5_dataset(dir, grid, start_date, end_date):
 
     # pressure_level
     duration = slice(str(start_date), str(end_date))
-    prs_paths = get_era5_prs_paths(dir, "day", pressure_level_vars, start_date)
+    prs_paths = get_prs_paths(dir, "day", pressure_level_vars, start_date)
     era5_prs = xr.open_mfdataset(prs_paths, combine='by_coords').sel(level=pressure_levels, time=duration)
 
     # surface
-    sfc_paths = get_era5_sfc_paths(dir, "day", surface_vars, start_date)
+    sfc_paths = get_sfc_paths(dir, "day", surface_vars, start_date)
     era5_sfc = xr.open_mfdataset(sfc_paths, combine='by_coords').sel(time=duration)
     era5_sfc['tp'] = era5_sfc['tp'] * 24 * 1000
     era5_sfc['tp'].attrs['units'] = 'mm/day' # Convert unit
@@ -87,15 +93,20 @@ def generate_era5_output(dir, grid, start_date, end_date):
     era5_channel = np.arange(31)
     era5_pressure_values = np.repeat(pressure_levels, 5)
     era5_pressure_values = np.append(era5_pressure_values, [np.nan] * 6) 
-
     era5_variables_values = [
-        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
-        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
-        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
-        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
-        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
-        'mean_sea_level_pressure', 'precipitation', 'temperature_2m', 'eastward_wind_10m', 'northward_wind_10m', 'terrain_height'
-    ]
+            'geopotential_height',
+            'eastward_wind',
+            'northward_wind',
+            'temperature',
+            'relative_humidity'
+        ] * 5 + [
+            'mean_sea_level_pressure',
+            'precipitation',
+            'temperature_2m',
+            'eastward_wind_10m',
+            'northward_wind_10m',
+            'terrain_height'
+        ]
 
     stack_era5 = da.stack(
         [
