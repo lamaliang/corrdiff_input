@@ -1,7 +1,6 @@
 import os
 import dask.array as da
 import numpy as np
-import pandas as pd
 import xesmf as xe
 import xarray as xr
 
@@ -88,6 +87,19 @@ def get_era5_dataset(dir, grid, start_date, end_date):
     return era5_out
 
 def get_era5(era5_out, stack_era5, era5_channel, era5_pressure_values, era5_variables_values):
+    era5_pressure = xr.DataArray(
+        da.from_array(era5_pressure_values, chunks=(len(era5_pressure_values))),
+        dims=["era5_channel"],
+        coords={"era5_channel": era5_channel},
+        name="era5_pressure"
+    )
+    era5_variable = xr.DataArray(
+        data=da.from_array(era5_variables_values, chunks=(len(era5_variables_values))),
+        dims=["era5_channel"],
+        coords={"era5_channel": era5_channel},
+        name="era5_variable"
+    )
+
     return xr.DataArray(
         stack_era5,
         dims=["time", "era5_channel", "south_north", "west_east"],
@@ -98,8 +110,8 @@ def get_era5(era5_out, stack_era5, era5_channel, era5_pressure_values, era5_vari
             "west_east": era5_out["west_east"],
             "XLAT": era5_out["XLAT"],
             "XLONG": era5_out["XLONG"],
-            "era5_pressure": xr.DataArray(era5_pressure_values, dims=["era5_channel"], coords={"era5_channel": era5_channel}),
-            "era5_variable": xr.DataArray(era5_variables_values, dims=["era5_channel"], coords={"era5_channel": era5_channel}),
+            "era5_pressure": era5_pressure,
+            "era5_variable": era5_variable,
         },
         name="era5"
     )
@@ -140,7 +152,6 @@ def get_era5_scale(era5):
         },
         name="era5_scale"
     )
-    return
 
 def get_era5_valid(era5):
     valid = True

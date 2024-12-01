@@ -46,7 +46,7 @@ def get_tread_dataset(file, grid, start_date, end_date):
 
 def get_cwb_pressure(cwb_channel):
     return xr.DataArray(
-        [np.nan, np.nan, np.nan, np.nan],
+        data=da.from_array([np.nan, np.nan, np.nan, np.nan], chunks=(4,)),
         dims=["cwb_channel"],
         coords={"cwb_channel": cwb_channel},
         name="cwb_pressure"
