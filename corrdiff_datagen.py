@@ -37,7 +37,7 @@ def generate_output_dataset(tread_file, era5_dir, grid, coords_cwa, start_date, 
     coords["XTIME"] = XTIME
 
     # Generate CWB (i.e., TReAD) and ERA5 output fields.
-    cwb, cwb_center, cwb_scale, cwb_valid, cwb_variable = \
+    cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid = \
         generate_tread_output(tread_file, grid, start_date, end_date)
     era5, era5_center, era5_scale, era5_valid = \
         generate_era5_output(era5_dir, grid, start_date, end_date)

@@ -44,34 +44,26 @@ def get_tread_dataset(file, grid, start_date, end_date):
 
     return tread_out
 
-def generate_tread_output(file, grid, start_date, end_date):
-    # Extract TReAD data from file.
-    tread_out = get_tread_dataset(file, grid, start_date, end_date)
-
-    # cwb_pressure
-    cwb_channel = np.arange(4)
-    cwb_pressure = xr.DataArray(
+def get_cwb_pressure(cwb_channel):
+    return xr.DataArray(
         [np.nan, np.nan, np.nan, np.nan],
         dims=["cwb_channel"],
         coords={"cwb_channel": cwb_channel},
         name="cwb_pressure"
     )
 
-    # Define variable names and create DataArray for cwb_variable.
-    cwb_var_names = np.array(list(tread_out.data_vars.keys()), dtype="<U26")
+def get_cwb_variable(cwb_var_names, cwb_pressure):
     cwb_vars_dask = da.from_array(cwb_var_names, chunks=(4,))
-
-    # cwb_variable
-    cwb_variable = xr.DataArray(
+    return xr.DataArray(
         cwb_vars_dask,
         dims=["cwb_channel"],
         coords={"cwb_pressure": cwb_pressure},
         name="cwb_variable"
     )
 
-    # cwb
+def get_cwb(tread_out, cwb_var_names, cwb_channel, cwb_pressure, cwb_variable):
     stack_tread = da.stack([tread_out[var].data for var in cwb_var_names], axis=1)
-    cwb = xr.DataArray(
+    return xr.DataArray(
         stack_tread,
         dims=["time", "cwb_channel", "south_north", "west_east"],
         coords={
@@ -87,12 +79,13 @@ def generate_tread_output(file, grid, start_date, end_date):
         name="cwb"
     )
 
-    # cwb_center
+def get_cwb_center(tread_out, cwb_pressure, cwb_variable):
     tread_mean = da.stack(
         [tread_out[var_name].mean(dim=["time", "south_north", "west_east"]).data for var_name in cwb_variable.values],
         axis=0
     )
-    cwb_center = xr.DataArray(
+
+    return xr.DataArray(
         tread_mean,
         dims=["cwb_channel"],
         coords={
@@ -102,12 +95,13 @@ def generate_tread_output(file, grid, start_date, end_date):
         name="cwb_center"
     )
 
-    # cwb_scale
+def get_cwb_scale(tread_out, cwb_pressure, cwb_variable):
     tread_std = da.stack(
         [tread_out[var_name].std(dim=["time", "south_north", "west_east"]).data for var_name in cwb_variable.values],
         axis=0
     )
-    cwb_scale = xr.DataArray(
+
+    return xr.DataArray(
         tread_std,
         dims=["cwb_channel"],
         coords={
@@ -117,13 +111,33 @@ def generate_tread_output(file, grid, start_date, end_date):
         name="cwb_center"
     )
 
-    # cwb_valid
+def get_cwb_valid(tread_out, cwb):
     valid = True  
-    cwb_valid = xr.DataArray(
+    return xr.DataArray(
         data=da.from_array([valid] * len(tread_out["time"]), chunks=(len(tread_out["time"]),)),
         dims=["time"],
         coords={"time": cwb["time"]},
         name="cwb_valid"
     )
 
-    return cwb, cwb_center, cwb_scale, cwb_valid, cwb_variable
+def generate_tread_output(file, grid, start_date, end_date):
+    # Extract TReAD data from file.
+    tread_out = get_tread_dataset(file, grid, start_date, end_date)
+
+    ## Prep for generation
+
+    cwb_channel = np.arange(4)
+    cwb_pressure = get_cwb_pressure(cwb_channel)
+    # Define variable names and create DataArray for cwb_variable.
+    cwb_var_names = np.array(list(tread_out.data_vars.keys()), dtype="<U26")
+
+    ## Generate output fields
+
+    cwb_variable = get_cwb_variable(cwb_var_names, cwb_pressure)
+    cwb = get_cwb(tread_out, cwb_var_names, cwb_channel, cwb_pressure, cwb_variable)
+
+    cwb_center = get_cwb_center(tread_out, cwb_pressure, cwb_variable)
+    cwb_scale = get_cwb_scale(tread_out, cwb_pressure, cwb_variable)
+    cwb_valid = get_cwb_valid(tread_out, cwb)
+
+    return cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid

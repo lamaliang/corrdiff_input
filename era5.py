@@ -87,12 +87,83 @@ def get_era5_dataset(dir, grid, start_date, end_date):
 
     return era5_out
 
+def get_era5(era5_out, stack_era5, era5_channel, era5_pressure_values, era5_variables_values):
+    return xr.DataArray(
+        stack_era5,
+        dims=["time", "era5_channel", "south_north", "west_east"],
+        coords={
+            "time": era5_out["time"],
+            "era5_channel": era5_channel,
+            "south_north": era5_out["south_north"],
+            "west_east": era5_out["west_east"],
+            "XLAT": era5_out["XLAT"],
+            "XLONG": era5_out["XLONG"],
+            "era5_pressure": xr.DataArray(era5_pressure_values, dims=["era5_channel"], coords={"era5_channel": era5_channel}),
+            "era5_variable": xr.DataArray(era5_variables_values, dims=["era5_channel"], coords={"era5_channel": era5_channel}),
+        },
+        name="era5"
+    )
+
+def get_era5_center(era5):
+    era5_mean = da.stack(
+        [
+            era5.isel(era5_channel=channel).mean(dim=["time", "south_north", "west_east"]).data
+            for channel in era5["era5_channel"].values
+        ],
+        axis=0
+    )
+
+    return xr.DataArray(
+        era5_mean,
+        dims=["era5_channel"],
+        coords={
+            "era5_pressure": era5["era5_pressure"],
+            "era5_variable": era5["era5_variable"]
+        },
+        name="era5_center"
+    )
+
+def get_era5_scale(era5):
+    era5_std = da.stack(
+        [
+            era5.isel(era5_channel=channel).std(dim=["time", "south_north", "west_east"]).data
+            for channel in era5["era5_channel"].values
+        ],
+        axis=0
+    )
+    return xr.DataArray(
+        era5_std,
+        dims=["era5_channel"],
+        coords={
+            "era5_pressure": era5["era5_pressure"],
+            "era5_variable": era5["era5_variable"]
+        },
+        name="era5_scale"
+    )
+    return
+
+def get_era5_valid(era5):
+    return xr.DataArray(
+        data=True,
+        dims=["time", "era5_channel"],
+        coords={
+            "time": era5["time"],
+            "era5_channel": era5["era5_channel"],
+            "era5_pressure": era5["era5_pressure"],
+            "era5_variable": era5["era5_variable"]
+        },
+        name="era5_valid"
+    )
+
 def generate_era5_output(dir, grid, start_date, end_date):
+    # Extract ERA5 data from file.
     era5_out = get_era5_dataset(dir, grid, start_date, end_date)
+
+    ## Prep for generation
 
     era5_channel = np.arange(31)
     era5_pressure_values = np.repeat(pressure_levels, 5)
-    era5_pressure_values = np.append(era5_pressure_values, [np.nan] * 6) 
+    era5_pressure_values = np.append(era5_pressure_values, [np.nan] * 6)
     era5_variables_values = [
             'geopotential_height',
             'eastward_wind',
@@ -116,70 +187,11 @@ def generate_era5_output(dir, grid, start_date, end_date):
         axis=1
     )
 
-    # era5
-    era5 = xr.DataArray(
-        stack_era5,
-        dims=["time", "era5_channel", "south_north", "west_east"],
-        coords={
-            "time": era5_out["time"],
-            "era5_channel": era5_channel,
-            "south_north": era5_out["south_north"],
-            "west_east": era5_out["west_east"],
-            "XLAT": era5_out["XLAT"],
-            "XLONG": era5_out["XLONG"],
-            "era5_pressure": xr.DataArray(era5_pressure_values, dims=["era5_channel"], coords={"era5_channel": era5_channel}),
-            "era5_variable": xr.DataArray(era5_variables_values, dims=["era5_channel"], coords={"era5_channel": era5_channel}),
-        },
-        name="era5"
-    )
+    ## Generate output fields
 
-    # era5_center
-    era5_mean = da.stack(
-        [
-            era5.isel(era5_channel=channel).mean(dim=["time", "south_north", "west_east"]).data
-            for channel in era5["era5_channel"].values
-        ],
-        axis=0
-    )
-    era5_center = xr.DataArray(
-        era5_mean,
-        dims=["era5_channel"],
-        coords={
-            "era5_pressure": era5["era5_pressure"],
-            "era5_variable": era5["era5_variable"]
-        },
-        name="era5_center"
-    )
-
-    # era5_scale
-    era5_std = da.stack(
-        [
-            era5.isel(era5_channel=channel).std(dim=["time", "south_north", "west_east"]).data
-            for channel in era5["era5_channel"].values
-        ],
-        axis=0
-    )
-    era5_scale = xr.DataArray(
-        era5_std,
-        dims=["era5_channel"],
-        coords={
-            "era5_pressure": era5["era5_pressure"],
-            "era5_variable": era5["era5_variable"]
-        },
-        name="era5_scale"
-    )
-
-    # era5_valid
-    era5_valid = xr.DataArray(
-        data=True,
-        dims=["time", "era5_channel"],
-        coords={
-            "time": era5["time"],
-            "era5_channel": era5["era5_channel"],
-            "era5_pressure": era5["era5_pressure"],
-            "era5_variable": era5["era5_variable"]
-        },
-        name="era5_valid"
-    )
+    era5 = get_era5(era5_out, stack_era5, era5_channel, era5_pressure_values, era5_variables_values)
+    era5_center = get_era5_center(era5)
+    era5_scale = get_era5_scale(era5)
+    era5_valid = get_era5_valid(era5)
 
     return era5, era5_center, era5_scale, era5_valid
