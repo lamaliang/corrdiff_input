@@ -143,8 +143,12 @@ def get_era5_scale(era5):
     return
 
 def get_era5_valid(era5):
+    valid = True
     return xr.DataArray(
-        data=True,
+        data=da.from_array(
+                [[valid] * len(era5["era5_channel"])] * len(era5["time"]),
+                chunks=(len(era5["time"]), len(era5["era5_channel"]))
+            ),
         dims=["time", "era5_channel"],
         coords={
             "time": era5["time"],

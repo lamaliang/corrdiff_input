@@ -114,7 +114,10 @@ def get_cwb_scale(tread_out, cwb_pressure, cwb_variable):
 def get_cwb_valid(tread_out, cwb):
     valid = True  
     return xr.DataArray(
-        data=da.from_array([valid] * len(tread_out["time"]), chunks=(len(tread_out["time"]),)),
+        data=da.from_array(
+                [valid] * len(tread_out["time"]),
+                chunks=(len(tread_out["time"]))
+            ),
         dims=["time"],
         coords={"time": cwb["time"]},
         name="cwb_valid"
