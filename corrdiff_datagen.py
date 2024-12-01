@@ -13,10 +13,6 @@ from era5 import generate_era5_output
 ##
 
 def generate_output_dataset(tread_file, era5_dir, grid, coords_cwa, start_date, end_date):
-    XTIME = np.datetime64("2024-11-26 15:00:00", "ns")
-    coords = coords_cwa
-    coords["XTIME"] = XTIME
-
     # Generate CWB (i.e., TReAD) and ERA5 output fields.
     cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid = \
         generate_tread_output(tread_file, grid, start_date, end_date)
@@ -26,9 +22,8 @@ def generate_output_dataset(tread_file, era5_dir, grid, coords_cwa, start_date, 
     # Copy cwb coordinates and write new cwb and era5 coordinates; also replace XTIME with new coords.
     coords = {
         key: value.drop_vars("XTIME") if isinstance(value, (xr.DataArray, xr.Dataset)) and "XTIME" in value.coords else value
-        for key, value in coords.items()
+        for key, value in coords_cwa.items()
     }
-
     out = xr.Dataset(
         coords={
             "XLONG": coords["XLONG"],
@@ -37,7 +32,7 @@ def generate_output_dataset(tread_file, era5_dir, grid, coords_cwa, start_date, 
             "XLAT_U": coords["XLAT_U"],
             "XLONG_V": coords["XLONG_V"],
             "XLAT_V": coords["XLAT_V"],
-            "XTIME": XTIME,
+            "XTIME": np.datetime64("2024-11-26 15:00:00", "ns"), # TODO: check why
             "time": cwb.time  # 保留時間
         }
     )
@@ -108,7 +103,7 @@ def generate_corrdiff_zarr(start_date, end_date):
 def main():
     if len(sys.argv) < 3:
         print("Usage: python corrdiff_datagen.py <start_date> <end_date>")
-        print("Sample: python corrdiff_datagen.py 20180101 20180103")
+        print("  e.g., $python corrdiff_datagen.py 20180101 20180103")
         sys.exit(1)
 
     generate_corrdiff_zarr(sys.argv[1], sys.argv[2])
