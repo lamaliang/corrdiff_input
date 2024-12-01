@@ -1,13 +1,10 @@
-import os
 import zarr
 import xarray as xr
-import pandas as pd
 import numpy as np
-import xesmf as xe
-import dask.array as da
 from dask.diagnostics import ProgressBar
 
 from tread import generate_tread_output
+from era5 import generate_era5_output
 
 ##
 # Configuration
@@ -15,7 +12,6 @@ from tread import generate_tread_output
 
 iStart = 20180101
 iLast = 20180103
-pressure_levels = [1000, 925, 850, 700, 500]
 
 LOCAL = True
 yyyymm = str(iStart)[:6]
@@ -35,176 +31,16 @@ data_path = {
 # Functions
 ##
 
-def get_era5_prs_paths(folder, subfolder, variables):
-    year = str(iStart)[:4]
-    return [
-        os.path.join(folder, f"./ERA5_PRS_{var}_201801_r1440x721_day.nc")
-        for var in variables
-    ] if LOCAL else [
-        os.path.join(
-            folder, "PRS", subfolder, var, str(year),
-            f"ERA5_PRS_{var}_{year}{month:02d}_r1440x721_day.nc"
-        )
-        for var in variables for month in range(1, 13)
-    ]
-
-def get_era5_sfc_paths(folder, subfolder, variables):
-    year = str(iStart)[:4]
-    return [
-        os.path.join(folder, f"./ERA5_SFC_{var}_201801_r1440x721_day.nc")
-        for var in variables
-    ] if LOCAL else [
-        os.path.join(
-            folder, "SFC", subfolder, var, str(year),
-            f"ERA5_SFC_{var}_{year}{month:02d}_r1440x721_day.nc"
-        )
-        for var in variables for month in range(1, 13)
-    ]
-
-def get_era5_dataset(era5_dir):
-    pressure_level_vars = ['z', 'u', 'v', 't', 'r']
-    surface_vars = ['msl', 'tp', 't2m', 'u10', 'v10']
-
-    # pressure_level
-    duration = slice(str(iStart), str(iLast))
-    prs_paths = get_era5_prs_paths(era5_dir, "day", pressure_level_vars)
-    era5_prs = xr.open_mfdataset(prs_paths, combine='by_coords').sel(level=pressure_levels, time=duration)
-
-    # surface
-    sfc_paths = get_era5_sfc_paths(era5_dir, "day", surface_vars)
-    era5_sfc = xr.open_mfdataset(sfc_paths, combine='by_coords').sel(time=duration)
-    era5_sfc['tp'] = era5_sfc['tp'] * 24 * 1000
-    era5_sfc['tp'].attrs['units'] = 'mm/day' # Convert unit
-
-    # orography
-    era5_topo = xr.open_mfdataset(era5_dir + "/ERA5_oro_r1440x721.nc")[['oro']]
-    era5_topo = era5_topo.expand_dims(time=era5_sfc.time)
-    era5_topo = era5_topo.reindex(time=era5_sfc.time)
-
-    # Merge prs, sfc, topo and rename variables.
-    era5 = xr.merge([era5_prs, era5_sfc, era5_topo]).rename({
-        "z": "geopotential_height",
-        "u": "eastward_wind",
-        "v": "northward_wind",
-        "t": "temperature",
-        "r": "relative_humidity",
-        "msl": "mean_sea_level_pressure",
-        "t2m": "temperature_2m",
-        "u10": "eastward_wind_10m",
-        "v10": "northward_wind_10m",
-        "tp" : "precipitation",
-        "oro": "terrain_height"
-    })
-
-    # Regrid ERA5 data over the spatial dimensions for all timestamps, based on CWA coordinates.
-    remap = xe.Regridder(era5, grid_cwa, method="bilinear")
-    # era5_out = era5_remap(era5)
-    era5_out = xr.concat(
-        [remap(era5.isel(time=i)) for i in range(era5.sizes["time"])],
-        dim="time"
-    )
-
-    return era5_out
-
-def generate_era5_output(era5_out):
-    era5_channel = np.arange(31)
-    era5_pressure_values = np.repeat(pressure_levels, 5)
-    era5_pressure_values = np.append(era5_pressure_values, [np.nan] * 6) 
-
-    era5_variables_values = [
-        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
-        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
-        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
-        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
-        'geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity',
-        'mean_sea_level_pressure', 'precipitation', 'temperature_2m', 'eastward_wind_10m', 'northward_wind_10m', 'terrain_height'
-    ]
-
-    stack_era5 = da.stack(
-        [
-            era5_out[var].sel(level=plev).data if "level" in era5_out[var].dims else era5_out[var].data
-            for var, plev in zip(era5_variables_values, era5_pressure_values)
-        ],
-        axis=1
-    )
-
-    # era5
-    era5 = xr.DataArray(
-        stack_era5,
-        dims=["time", "era5_channel", "south_north", "west_east"],
-        coords={
-            "time": era5_out["time"],
-            "era5_channel": era5_channel,
-            "south_north": era5_out["south_north"],
-            "west_east": era5_out["west_east"],
-            "XLAT": era5_out["XLAT"],
-            "XLONG": era5_out["XLONG"],
-            "era5_pressure": xr.DataArray(era5_pressure_values, dims=["era5_channel"], coords={"era5_channel": era5_channel}),
-            "era5_variable": xr.DataArray(era5_variables_values, dims=["era5_channel"], coords={"era5_channel": era5_channel}),
-        },
-        name="era5"
-    )
-
-    # era5_center
-    era5_mean = da.stack(
-        [
-            era5.isel(era5_channel=channel).mean(dim=["time", "south_north", "west_east"]).data
-            for channel in era5["era5_channel"].values
-        ],
-        axis=0
-    )
-    era5_center = xr.DataArray(
-        era5_mean,
-        dims=["era5_channel"],
-        coords={
-            "era5_pressure": era5["era5_pressure"],
-            "era5_variable": era5["era5_variable"]
-        },
-        name="era5_center"
-    )
-
-    # era5_scale
-    era5_std = da.stack(
-        [
-            era5.isel(era5_channel=channel).std(dim=["time", "south_north", "west_east"]).data
-            for channel in era5["era5_channel"].values
-        ],
-        axis=0
-    )
-    era5_scale = xr.DataArray(
-        era5_std,
-        dims=["era5_channel"],
-        coords={
-            "era5_pressure": era5["era5_pressure"],
-            "era5_variable": era5["era5_variable"]
-        },
-        name="era5_scale"
-    )
-
-    # era5_valid
-    era5_valid = xr.DataArray(
-        data=True,
-        dims=["time", "era5_channel"],
-        coords={
-            "time": era5["time"],
-            "era5_channel": era5["era5_channel"],
-            "era5_pressure": era5["era5_pressure"],
-            "era5_variable": era5["era5_variable"]
-        },
-        name="era5_valid"
-    )
-
-    return era5, era5_center, era5_scale, era5_valid
-
-def generate_output_dataset(tread_file, grid, start_data_str, end_date_str, era5_out, coords_cwa):
+def generate_output_dataset(tread_file, era5_dir, grid, coords_cwa, start_date, end_date):
     XTIME = np.datetime64("2024-11-26 15:00:00", "ns")
     coords = coords_cwa
     coords["XTIME"] = XTIME
 
     # Generate CWB (i.e., TReAD) and ERA5 output fields.
     cwb, cwb_center, cwb_scale, cwb_valid, cwb_variable = \
-        generate_tread_output(tread_file, grid, start_data_str, end_date_str)
-    era5, era5_center, era5_scale, era5_valid = generate_era5_output(era5_out)
+        generate_tread_output(tread_file, grid, start_date, end_date)
+    era5, era5_center, era5_scale, era5_valid = \
+        generate_era5_output(era5_dir, grid, start_date, end_date)
 
     # Copy cwb coordinates and write new cwb and era5 coordinates; also replace XTIME with new coords.
     coords = {
@@ -264,13 +100,13 @@ def write_to_zarr(out_path, out_ds):
 cwa = xr.open_zarr(data_path["cwa_ref"])
 grid_cwa = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
 
-# Get TReAD and ERA5 datasets.
-era5_out = get_era5_dataset(data_path["era5_dir"])
-
 # Copy coordinates "latitude" and "longitude"
 coord_list = ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
 coords_cwa = { key: cwa.coords[key] for key in coord_list }
 
-out = generate_output_dataset(data_path["tread_file"], grid_cwa, iStart, iLast, era5_out, coords_cwa)
+out = generate_output_dataset( \
+        data_path["tread_file"], data_path["era5_dir"], \
+        grid_cwa, coords_cwa, \
+        iStart, iLast)
 
 write_to_zarr(f"corrdiff_dataset_{iStart}_{iLast}.zarr", out)
