@@ -1,5 +1,5 @@
 input_channels:[
-    ChannelMetadata(name='eastward_winlsd', level='1000.0', auxiliary=False),
+    ChannelMetadata(name='eastward_wind', level='1000.0', auxiliary=False),
     ChannelMetadata(name='northward_wind', level='925.0', auxiliary=False),
     ChannelMetadata(name='temperature', level='850.0', auxiliary=False),
     ChannelMetadata(name='relative_humidity', level='700.0', auxiliary=False),
