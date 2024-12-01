@@ -1,3 +1,5 @@
+import os
+import sys
 import zarr
 import xarray as xr
 import numpy as np
@@ -5,27 +7,6 @@ from dask.diagnostics import ProgressBar
 
 from tread import generate_tread_output
 from era5 import generate_era5_output
-
-##
-# Configuration
-##
-
-iStart = 20180101
-iLast = 20180103
-
-LOCAL = True
-yyyymm = str(iStart)[:6]
-data_path = {
-    # LOCAL
-    "cwa_ref": "./data/cwa_dataset_example.zarr",
-    "tread_file": f"./data/wrfo2D_d02_{yyyymm}.nc",
-    "era5_dir": "./data",
-} if LOCAL else {
-    # REMOTE
-    "cwa_ref": "/lfs/home/dadm/data/cwa_dataset.zarr",
-    "tread_file": f"/lfs/archive/TCCIP_data/TReAD/SFC/hr/wrfo2D_d02_{yyyymm}.nc",
-    "era5_dir": "/lfs/archive/Reanalysis/ERA5",
-}
 
 ##
 # Functions
@@ -75,8 +56,7 @@ def generate_output_dataset(tread_file, era5_dir, grid, coords_cwa, start_date, 
     out["era5_center"] = era5_center
     out["era5_valid"] = era5_valid
 
-    out = out.drop_vars(["south_north", "west_east"])
-    out = out.drop_vars(["cwb_channel", "era5_channel"])
+    out = out.drop_vars(["south_north", "west_east", "cwb_channel", "era5_channel"])
     print(out)
 
     return out
@@ -85,28 +65,53 @@ def write_to_zarr(out_path, out_ds):
     comp = zarr.Blosc(cname='zstd', clevel=3, shuffle=2)
     encoding = { var: {'compressor': comp} for var in out_ds.data_vars }
 
-    print('\n')
+    print(f"\nSaving data to {out_path}:")
     with ProgressBar():
-        out.to_zarr(out_path, mode='w', encoding=encoding, compute=True)
+        out_ds.to_zarr(out_path, mode='w', encoding=encoding, compute=True)
 
     print(f"Data successfully saved to [{out_path}]")
 
+def get_data_path(yyyymm):
+    # LOCAL
+    if not os.path.exists("/lfs/archive/Reanalysis/"):
+        return {
+            "cwa_ref": "./data/cwa_dataset_example.zarr",
+            "tread_file": f"./data/wrfo2D_d02_{yyyymm}.nc",
+            "era5_dir": "./data",
+        }
 
-##
-# Main
-##
+    # REMOTE
+    return {
+        "cwa_ref": "/lfs/home/dadm/data/cwa_dataset.zarr",
+        "tread_file": f"/lfs/archive/TCCIP_data/TReAD/SFC/hr/wrfo2D_d02_{yyyymm}.nc",
+        "era5_dir": "/lfs/archive/Reanalysis/ERA5",
+    }
 
-# Grid of CorrDiff data as reference
-cwa = xr.open_zarr(data_path["cwa_ref"])
-grid_cwa = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
+def generate_corrdiff_zarr(start_date, end_date):
+    data_path = get_data_path(str(start_date)[:6])
 
-# Copy coordinates "latitude" and "longitude"
-coord_list = ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
-coords_cwa = { key: cwa.coords[key] for key in coord_list }
+    # Grid of CorrDiff data as reference
+    cwa = xr.open_zarr(data_path["cwa_ref"])
+    grid_cwa = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
 
-out = generate_output_dataset( \
-        data_path["tread_file"], data_path["era5_dir"], \
-        grid_cwa, coords_cwa, \
-        iStart, iLast)
+    # Copy coordinates "latitude" and "longitude"
+    coord_list = ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
+    coords_cwa = { key: cwa.coords[key] for key in coord_list }
 
-write_to_zarr(f"corrdiff_dataset_{iStart}_{iLast}.zarr", out)
+    out = generate_output_dataset( \
+            data_path["tread_file"], data_path["era5_dir"], \
+            grid_cwa, coords_cwa, \
+            start_date, end_date)
+
+    write_to_zarr(f"corrdiff_dataset_{start_date}_{end_date}.zarr", out)
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: python corrdiff_datagen.py <start_date> <end_date>")
+        print("Sample: python corrdiff_datagen.py 20180101 20180103")
+        sys.exit(1)
+
+    generate_corrdiff_zarr(sys.argv[1], sys.argv[2])
+
+if __name__ == "__main__":
+    main()
