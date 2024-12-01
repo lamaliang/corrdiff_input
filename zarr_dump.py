@@ -21,10 +21,10 @@ def dump_zarr_fields(zarr_path):
         ("cwb_pressure", 4),
         ("cwb_scale", 4),
         ("cwb_variable", 4),
-        ("era5_center", 29),
-        ("era5_pressure", 29),
-        ("era5_scale", 29),
-        ("era5_variable", 29)
+        ("era5_center", 30),
+        ("era5_pressure", 30),
+        ("era5_scale", 30),
+        ("era5_variable", 30)
     ]:
         print(f"\n{field_group}:")
         print(group[field_group].info)
