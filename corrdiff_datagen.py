@@ -85,13 +85,13 @@ def get_data_path(yyyymm):
 def generate_corrdiff_zarr(start_date, end_date):
     data_path = get_data_path(str(start_date)[:6])
 
-    # Grid of CorrDiff data as reference
+    # Extract CorrDiff data's grid and coordinates for reference.
     cwa = xr.open_zarr(data_path["cwa_ref"])
     grid_cwa = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
-
-    # Copy coordinates "latitude" and "longitude"
-    coord_list = ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
-    coords_cwa = { key: cwa.coords[key] for key in coord_list }
+    coords_cwa = {
+            key: cwa.coords[key] for key in
+            ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
+        }
 
     out = generate_output_dataset( \
             data_path["tread_file"], data_path["era5_dir"], \
