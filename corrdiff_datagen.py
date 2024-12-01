@@ -8,48 +8,46 @@ from dask.diagnostics import ProgressBar
 from tread import generate_tread_output
 from era5 import generate_era5_output
 
+CORRDIFF_GRID_COORD_KEYS = ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
+
 ##
 # Functions
 ##
 
-def generate_output_dataset(tread_file, era5_dir, grid, coords_cwa, start_date, end_date):
+def generate_output_dataset(tread_file, era5_dir, grid, grid_coords, start_date, end_date):
     # Generate CWB (i.e., TReAD) and ERA5 output fields.
     cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid = \
         generate_tread_output(tread_file, grid, start_date, end_date)
     era5, era5_center, era5_scale, era5_valid = \
         generate_era5_output(era5_dir, grid, start_date, end_date)
 
-    # Copy cwb coordinates and write new cwb and era5 coordinates; also replace XTIME with new coords.
+    # Copy coordinates and remove XTIME if present
     coords = {
-        key: value.drop_vars("XTIME") if isinstance(value, (xr.DataArray, xr.Dataset)) and "XTIME" in value.coords else value
-        for key, value in coords_cwa.items()
+        key: value.drop_vars("XTIME") if "XTIME" in getattr(value, "coords", {}) else value
+        for key, value in grid_coords.items()
     }
+
+    # Create the output dataset
     out = xr.Dataset(
         coords={
-            "XLONG": coords["XLONG"],
-            "XLAT": coords["XLAT"],
-            "XLONG_U": coords["XLONG_U"],
-            "XLAT_U": coords["XLAT_U"],
-            "XLONG_V": coords["XLONG_V"],
-            "XLAT_V": coords["XLAT_V"],
-            "XTIME": np.datetime64("2024-11-26 15:00:00", "ns"), # TODO: check why
-            "time": cwb.time  # 保留時間
+            **{key: coords[key] for key in CORRDIFF_GRID_COORD_KEYS},
+            "XTIME": np.datetime64("2024-11-26 15:00:00", "ns"),  # Placeholder for timestamp
+            "time": cwb.time,  # Retain CWB time dimension
+            "cwb_variable": cwb_variable,
+            "era5_scale": ("era5_channel", era5_scale.data)
         }
     )
 
-    out = out.assign_coords(cwb_variable=cwb_variable)
-    # TODO: check necessity
-    # out = out.reset_coords("cwb_channel", drop=True) if "cwb_channel" in out.coords else out
-    out.coords["era5_scale"] = ("era5_channel", era5_scale.data)
-
-    # Write cwb & era5 data
-    out["cwb"] = cwb
-    out["cwb_center"] = cwb_center
-    out["cwb_scale"] = cwb_scale
-    out["cwb_valid"] = cwb_valid
-    out["era5"] = era5
-    out["era5_center"] = era5_center
-    out["era5_valid"] = era5_valid
+    # Assign CWB and ERA5 data variables
+    out = out.assign({
+        "cwb": cwb,
+        "cwb_center": cwb_center,
+        "cwb_scale": cwb_scale,
+        "cwb_valid": cwb_valid,
+        "era5": era5,
+        "era5_center": era5_center,
+        "era5_valid": era5_valid
+    })
 
     out = out.drop_vars(["south_north", "west_east", "cwb_channel", "era5_channel"])
     print(out)
@@ -87,15 +85,12 @@ def generate_corrdiff_zarr(start_date, end_date):
 
     # Extract CorrDiff data's grid and coordinates for reference.
     cwa = xr.open_zarr(data_path["cwa_ref"])
-    grid_cwa = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
-    coords_cwa = {
-            key: cwa.coords[key] for key in
-            ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
-        }
+    grid = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
+    grid_coords = { key: cwa.coords[key] for key in CORRDIFF_GRID_COORD_KEYS }
 
     out = generate_output_dataset( \
             data_path["tread_file"], data_path["era5_dir"], \
-            grid_cwa, coords_cwa, \
+            grid, grid_coords, \
             start_date, end_date)
 
     write_to_zarr(f"corrdiff_dataset_{start_date}_{end_date}.zarr", out)
