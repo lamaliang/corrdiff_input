@@ -1,8 +1,9 @@
 import dask.array as da
 import numpy as np
 import pandas as pd
-import xesmf as xe
 import xarray as xr
+
+from util import regrid_dataset
 
 def get_tread_dataset(file, grid, start_date, end_date):
     surface_vars = ['RAINC', 'RAINNC', 'T2', 'U10', 'V10']
@@ -29,13 +30,8 @@ def get_tread_dataset(file, grid, start_date, end_date):
         "V10": "northward_wind_10m",
     })
 
-    # Regrid TReAD data over the spatial dimensions for all timestamps, based on CWA coordinates.
-    remap = xe.Regridder(tread, grid, method="bilinear")
-    # tccip_cwb = tccip_remap(tccip)
-    tread_out = xr.concat(
-        [remap(tread.isel(time=i)) for i in range(tread.sizes["time"])],
-        dim="time"
-    )
+    # Based on CWA grid, regrid TReAD data over spatial dimensions for all timestamps.
+    tread_out = regrid_dataset(tread, grid, {"south_north", "west_east"})
 
     # Replace 0 to nan for TReAD domain is smaller than CWB_zarr.
     fill_value = np.nan

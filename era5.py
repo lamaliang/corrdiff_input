@@ -1,8 +1,9 @@
 import os
 import dask.array as da
 import numpy as np
-import xesmf as xe
 import xarray as xr
+
+from util import regrid_dataset
 
 pressure_levels = [500, 700, 850, 925, 1000]
 
@@ -76,13 +77,8 @@ def get_era5_dataset(dir, grid, start_date, end_date):
         "oro": "terrain_height"
     })
 
-    # Regrid ERA5 data over the spatial dimensions for all timestamps, based on CWA coordinates.
-    remap = xe.Regridder(era5, grid, method="bilinear")
-    # era5_out = era5_remap(era5)
-    era5_out = xr.concat(
-        [remap(era5.isel(time=i)) for i in range(era5.sizes["time"])],
-        dim="time"
-    )
+    # Based on CWA grid, regrid TReAD data over spatial dimensions for all timestamps.
+    era5_out = regrid_dataset(era5, grid, {"latitude", "longitude"})
 
     return era5_out
 

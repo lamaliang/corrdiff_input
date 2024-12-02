@@ -4,17 +4,17 @@ import sys
 def dump_zarr_fields(zarr_path):
     """
     Dumps specified fields from a Zarr file and prints their content and structure.
-    
+
     Parameters:
         zarr_path (str): Path to the Zarr file.
     """
     # Open the Zarr file in consolidated mode
     group = zarr.open_consolidated(zarr_path)
-    
+
     print("Zarr Group Tree Structure:")
     print(group.tree())
     print("\nField Details:\n")
-    
+
     # Iterate over the specified folders and dump the content
     for field_group, count in [
         ("cwb_center", 4),
