@@ -92,7 +92,7 @@ def generate_corrdiff_zarr(start_date, end_date):
             grid, grid_coords, start_date, end_date)
     print(out)
 
-    # write_to_zarr(f"corrdiff_dataset_{start_date}_{end_date}.zarr", out)
+    write_to_zarr(f"corrdiff_dataset_{start_date}_{end_date}.zarr", out)
 
 def main():
     if len(sys.argv) < 3:

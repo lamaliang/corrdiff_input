@@ -4,7 +4,7 @@ import numpy as np
 import xesmf as xe
 import xarray as xr
 
-pressure_levels = [1000, 925, 850, 700, 500]
+pressure_levels = [500, 700, 850, 925, 1000]
 
 def isLocal(folder) -> bool:
     return "Reanalysis" not in str(folder) # TODO: Remove the hack
