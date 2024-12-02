@@ -12,7 +12,7 @@ class TestCorrDiffDatagen(unittest.TestCase):
         self.grid_coords = { key: cwa.coords[key] for key in CORRDIFF_GRID_COORD_KEYS }
 
         self.tread_file = "./data/wrfo2D_d02_201801.nc"
-        self.era5_dir = "./data"
+        self.era5_dir = "./data/era5"
         self.start_date = "20180101"
         self.end_date = "20180103"
 

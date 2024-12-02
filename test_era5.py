@@ -23,7 +23,7 @@ class TestERA5(unittest.TestCase):
     def test_generate_era5_output(self):
         # Mock ERA5 generation
         era5, era5_center, era5_scale, era5_valid = generate_era5_output(
-            "./data", self.grid, self.start_date, self.end_date
+            "./data/era5", self.grid, self.start_date, self.end_date
         )
         self.assertIsInstance(era5, xr.DataArray)
         self.assertIsInstance(era5_center, xr.DataArray)

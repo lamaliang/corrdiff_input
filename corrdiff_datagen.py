@@ -70,7 +70,7 @@ def get_data_path(yyyymm):
         return {
             "cwa_ref": "./data/cwa_dataset_example.zarr",
             "tread_file": f"./data/wrfo2D_d02_{yyyymm}.nc",
-            "era5_dir": "./data",
+            "era5_dir": "./data/era5",
         }
 
     # REMOTE
