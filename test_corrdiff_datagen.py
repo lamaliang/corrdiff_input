@@ -11,6 +11,15 @@ class TestCorrDiffDatagen(unittest.TestCase):
         self.grid = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
         self.grid_coords = { key: cwa.coords[key] for key in CORRDIFF_GRID_COORD_KEYS }
 
+        # self.grid = xr.Dataset({
+        #     "lat": (["south_north", "west_east"], np.random.rand(10, 10)),
+        #     "lon": (["south_north", "west_east"], np.random.rand(10, 10))
+        # })
+        # self.grid_coords = {
+        #     "XLAT": xr.DataArray(np.random.rand(10, 10), dims=["south_north", "west_east"]),
+        #     "XLONG": xr.DataArray(np.random.rand(10, 10), dims=["south_north", "west_east"]),
+        # }
+
         self.tread_file = "./data/wrfo2D_d02_201801.nc"
         self.era5_dir = "./data/era5"
         self.start_date = "20180101"

@@ -1,0 +1,7 @@
+{
+    "_ARRAY_DIMENSIONS": [
+        "era5_channel"
+    ],
+    "coordinates": "XTIME era5_pressure era5_variable",
+    "dtype": "bool"
+}

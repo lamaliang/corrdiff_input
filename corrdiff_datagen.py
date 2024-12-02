@@ -50,7 +50,6 @@ def generate_output_dataset(tread_file, era5_dir, grid, grid_coords, start_date,
     })
 
     out = out.drop_vars(["south_north", "west_east", "cwb_channel", "era5_channel"])
-    print(out)
 
     return out
 
@@ -91,8 +90,9 @@ def generate_corrdiff_zarr(start_date, end_date):
     out = generate_output_dataset( \
             data_path["tread_file"], data_path["era5_dir"], \
             grid, grid_coords, start_date, end_date)
+    print(out)
 
-    write_to_zarr(f"corrdiff_dataset_{start_date}_{end_date}.zarr", out)
+    # write_to_zarr(f"corrdiff_dataset_{start_date}_{end_date}.zarr", out)
 
 def main():
     if len(sys.argv) < 3:
