@@ -178,12 +178,12 @@ def generate_era5_output(dir, grid, start_date, end_date):
 
     era5_channel = np.arange(31)
     era5_pressure_values = np.append(
-        np.repeat(pressure_levels, 5),
-        [np.nan] * 6
+        [np.nan] * 6,
+        np.repeat(pressure_levels, 5)
     )
     era5_variables_values = (
-        ['geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity'] * 5 +
-        ['mean_sea_level_pressure', 'precipitation', 'temperature_2m', 'eastward_wind_10m', 'northward_wind_10m', 'terrain_height']
+        ['precipitation', 'temperature_2m', 'eastward_wind_10m', 'northward_wind_10m', 'mean_sea_level_pressure', 'terrain_height'] +
+        ['geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity'] * 5
     )
 
     stack_era5 = da.stack(
