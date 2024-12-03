@@ -1,5 +1,6 @@
 import zarr
 import sys
+import xarray as xr
 
 def dump_zarr_fields(zarr_path):
     """
@@ -32,10 +33,14 @@ def dump_zarr_fields(zarr_path):
             print(f"  Index {i}: {group[field_group][i]}")
 
     # Print general information about all groups
-    print("\nAll Groups Information:\n")
-    for folder in group:
-        print(f"{folder}:")
-        print(group[folder].info)
+    # print("\nAll Groups Information:\n")
+    # for folder in group:
+    #     print(f"{folder}:")
+    #     print(group[folder].info)
+
+    print("\nZarr Dataset Structure:")
+    ds = xr.open_zarr(zarr_path)
+    print(ds)
 
 def main():
     """
