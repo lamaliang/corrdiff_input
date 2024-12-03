@@ -78,7 +78,7 @@ def get_era5_dataset(dir, grid, start_date, end_date):
     })
 
     # Based on CWA grid, regrid TReAD data over spatial dimensions for all timestamps.
-    era5_out = regrid_dataset(era5, grid, {"latitude", "longitude"})
+    era5_out = regrid_dataset(era5, grid)
 
     return era5_out
 

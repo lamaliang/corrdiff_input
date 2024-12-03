@@ -31,7 +31,7 @@ def get_tread_dataset(file, grid, start_date, end_date):
     })
 
     # Based on CWA grid, regrid TReAD data over spatial dimensions for all timestamps.
-    tread_out = regrid_dataset(tread, grid, {"south_north", "west_east"})
+    tread_out = regrid_dataset(tread, grid)
 
     # Replace 0 to nan for TReAD domain is smaller than CWB_zarr.
     fill_value = np.nan
