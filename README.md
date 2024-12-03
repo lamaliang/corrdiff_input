@@ -6,6 +6,35 @@
 conda env create -f corrdiff_input.yml
 ```
 
+## Prepare TReAD and ERA5 `.nc` files (local testing only)
+- Put TReAD file below under `data/`.
+  - `wrfo2D_d02_{yyyymm}.nc`
+- Put ERA5 files below under `data/era5/`.
+  - `ERA5_PRS_*_{yyyymm}_r1440x721_day.nc`
+  - `ERA5_SFC_*_{yyyymm}_r1440x721_day.nc`
+  - `ERA5_oro_r1440x721_day.nc`
+
+### Example
+
+```
+.
+├── cwa_dataset_example.zarr
+├── era5
+│   ├── ERA5_PRS_q_201801_r1440x721_day.nc
+│   ├── ERA5_PRS_r_201801_r1440x721_day.nc
+│   ├── ERA5_PRS_t_201801_r1440x721_day.nc
+│   ├── ERA5_PRS_u_201801_r1440x721_day.nc
+│   ├── ERA5_PRS_v_201801_r1440x721_day.nc
+│   ├── ERA5_PRS_z_201801_r1440x721_day.nc
+│   ├── ERA5_SFC_msl_201801_r1440x721_day.nc
+│   ├── ERA5_SFC_t2m_201801_r1440x721_day.nc
+│   ├── ERA5_SFC_tp_201801_r1440x721_day.nc
+│   ├── ERA5_SFC_u10_201801_r1440x721_day.nc
+│   ├── ERA5_SFC_v10_201801_r1440x721_day.nc
+│   └── ERA5_oro_r1440x721.nc
+└── wrfo2D_d02_201801.nc
+```
+
 ## Generate CorrDiff dataset
 
 ```
@@ -29,6 +58,9 @@ python -m unittest <test_file>
 Example: `python -m unittest test_corrdiff_datagen.py`
 
 # Files
+
+## Setup
+- `corrdiff_input.yml`: conda enviroment `.yml` file.
 
 ## Generating dataset
 - `corrdiff_datagen.py`: Main functions that take start & end dates, generate output dataset, and write to zarr file.
