@@ -18,10 +18,10 @@ def dump_zarr_fields(zarr_path):
 
     # Iterate over the specified folders and dump the content
     for field_group, count in [
-        ("cwb_center", 4),
-        ("cwb_pressure", 4),
-        ("cwb_scale", 4),
-        ("cwb_variable", 4),
+        ("cwb_center", 7),
+        ("cwb_pressure", 7),
+        ("cwb_scale", 7),
+        ("cwb_variable", 7),
         ("era5_center", 21),
         ("era5_pressure", 21),
         ("era5_scale", 21),

@@ -6,7 +6,8 @@ import xarray as xr
 from util import regrid_dataset
 
 def get_tread_dataset(file, grid, start_date, end_date):
-    surface_vars = ['RAINC', 'RAINNC', 'T2', 'U10', 'V10']
+    surface_vars = ['RAINC', 'RAINNC', 'T2', 'U10', 'V10',
+                    'RH2', 'PSFC', 'UV10']
 
     start_datetime = pd.to_datetime(str(start_date), format='%Y%m%d')
     end_datetime = pd.to_datetime(str(end_date), format='%Y%m%d')
@@ -20,14 +21,17 @@ def get_tread_dataset(file, grid, start_date, end_date):
     )
 
     # Calculate daily mean for T2, U10, and V10. Also sum TP = RAINC+RAINNC and accumulate daily.
-    tread = tread_surface[['T2', 'U10', 'V10']].resample(time='1D').mean()
+    tread = tread_surface[['T2', 'U10', 'V10', 'RH2', 'PSFC', 'UV10']].resample(time='1D').mean()
     tread['TP'] = (tread_surface['RAINC'] + tread_surface['RAINNC']).resample(time='1D').sum()
 
-    tread = tread[['TP', 'T2', 'U10', 'V10']].rename({
+    tread = tread[['TP', 'T2', 'U10', 'V10', 'RH2', 'PSFC', 'UV10']].rename({
         "TP": "precipitation",
         "T2": "temperature_2m",
         "U10": "eastward_wind_10m",
         "V10": "northward_wind_10m",
+        "RH2": "relative_humidity_2m",
+        "PSFC": "sea_level_pressure",
+        "UV10": "windspeed_2m",
     })
 
     # Based on CWA grid, regrid TReAD data over spatial dimensions for all timestamps.
@@ -42,14 +46,14 @@ def get_tread_dataset(file, grid, start_date, end_date):
 
 def get_cwb_pressure(cwb_channel):
     return xr.DataArray(
-        data=da.from_array([np.nan, np.nan, np.nan, np.nan], chunks=(4,)),
+        data=da.from_array([np.nan] * 7, chunks=(7,)),
         dims=["cwb_channel"],
         coords={"cwb_channel": cwb_channel},
         name="cwb_pressure"
     )
 
 def get_cwb_variable(cwb_var_names, cwb_pressure):
-    cwb_vars_dask = da.from_array(cwb_var_names, chunks=(4,))
+    cwb_vars_dask = da.from_array(cwb_var_names, chunks=(7,))
     return xr.DataArray(
         cwb_vars_dask,
         dims=["cwb_channel"],
@@ -125,7 +129,7 @@ def generate_tread_output(file, grid, start_date, end_date):
 
     ## Prep for generation
 
-    cwb_channel = np.arange(4)
+    cwb_channel = np.arange(7)
     cwb_pressure = get_cwb_pressure(cwb_channel)
     # Define variable names and create DataArray for cwb_variable.
     cwb_var_names = np.array(list(tread_out.data_vars.keys()), dtype="<U26")
