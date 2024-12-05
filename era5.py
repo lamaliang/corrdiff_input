@@ -5,7 +5,7 @@ import xarray as xr
 
 from util import regrid_dataset
 
-pressure_levels = [500, 700, 850, 925, 1000]
+pressure_levels = [500, 700, 850, 925]
 
 def isLocal(folder) -> bool:
     return "Reanalysis" not in str(folder) # TODO: Remove the hack
@@ -43,8 +43,8 @@ def get_sfc_paths(folder, subfolder, variables, start_date):
     ]
 
 def get_era5_dataset(dir, grid, start_date, end_date):
-    pressure_level_vars = ['z', 'u', 'v', 't', 'r']
-    surface_vars = ['msl', 'tp', 't2m', 'u10', 'v10']
+    pressure_level_vars = ['z', 't', 'u', 'v']
+    surface_vars = ['tp', 't2m', 'u10', 'v10']
 
     # pressure_level
     duration = slice(str(start_date), str(end_date))
@@ -65,15 +65,13 @@ def get_era5_dataset(dir, grid, start_date, end_date):
     # Merge prs, sfc, topo and rename variables.
     era5 = xr.merge([era5_prs, era5_sfc, era5_topo]).rename({
         "z": "geopotential_height",
+        "t": "temperature",
         "u": "eastward_wind",
         "v": "northward_wind",
-        "t": "temperature",
-        "r": "relative_humidity",
-        "msl": "mean_sea_level_pressure",
+        "tp" : "precipitation",
         "t2m": "temperature_2m",
         "u10": "eastward_wind_10m",
         "v10": "northward_wind_10m",
-        "tp" : "precipitation",
         "oro": "terrain_height"
     })
 
@@ -172,14 +170,13 @@ def generate_era5_output(dir, grid, start_date, end_date):
 
     ## Prep for generation
 
-    era5_channel = np.arange(31)
-    era5_pressure_values = np.append(
-        [np.nan] * 6,
-        np.repeat(pressure_levels, 5)
+    era5_channel = np.arange(21)
+    era5_pressure_values = np.array(
+        [np.nan] + list(np.repeat(pressure_levels, 4)) + [np.nan] * 4
     )
     era5_variables_values = (
-        ['precipitation', 'temperature_2m', 'eastward_wind_10m', 'northward_wind_10m', 'mean_sea_level_pressure', 'terrain_height'] +
-        ['geopotential_height', 'eastward_wind', 'northward_wind', 'temperature', 'relative_humidity'] * 5
+        ['precipitation'] + ['geopotential_height', 'temperature', 'eastward_wind', 'northward_wind'] * 4 +
+        ['temperature_2m', 'eastward_wind_10m', 'northward_wind_10m', 'terrain_height']
     )
 
     stack_era5 = da.stack(
