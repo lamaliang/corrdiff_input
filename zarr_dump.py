@@ -2,6 +2,8 @@ import zarr
 import sys
 import xarray as xr
 
+from tread import TREAD_CHANNELS
+
 def dump_zarr_fields(zarr_path):
     """
     Dumps specified fields from a Zarr file and prints their content and structure.
@@ -18,10 +20,10 @@ def dump_zarr_fields(zarr_path):
 
     # Iterate over the specified folders and dump the content
     for field_group, count in [
-        ("cwb_center", 4),
-        ("cwb_pressure", 4),
-        ("cwb_scale", 4),
-        ("cwb_variable", 4),
+        ("cwb_center", len(TREAD_CHANNELS)),
+        ("cwb_pressure", len(TREAD_CHANNELS)),
+        ("cwb_scale", len(TREAD_CHANNELS)),
+        ("cwb_variable", len(TREAD_CHANNELS)),
         ("era5_center", 21),
         ("era5_pressure", 21),
         ("era5_scale", 21),
