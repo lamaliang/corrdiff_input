@@ -15,7 +15,13 @@ TREAD_CHANNELS_NO_TP = {
     "RH2": "relative_humidity_2m",
     "PSFC": "sea_level_pressure",
 }
-TREAD_CHANNELS = { "TP": "precipitation" } | TREAD_CHANNELS_NO_TP
+#TREAD_CHANNELS = { "TP": "precipitation" } | TREAD_CHANNELS_NO_TP
+TREAD_CHANNELS = (
+    {"TP": "precipitation",
+     "T2MAX": "maximum_temperature_2m",
+     "T2MIN": "minimum_temperature_2m"}
+    | TREAD_CHANNELS_NO_TP
+)
 
 def get_tread_dataset(file, grid, start_date, end_date):
     channel_keys_no_tp = list(TREAD_CHANNELS_NO_TP.keys())
@@ -35,6 +41,8 @@ def get_tread_dataset(file, grid, start_date, end_date):
     # Calculate daily mean for non-TP channels, and sum TP = RAINC+RAINNC & accumulate daily.
     tread = tread_surface[channel_keys_no_tp].resample(time='1D').mean()
     tread['TP'] = (tread_surface['RAINC'] + tread_surface['RAINNC']).resample(time='1D').sum()
+    tread['T2MAX'] = (tread_surface['T2']).resample(time='1D').max()
+    tread['T2MIN'] = (tread_surface['T2']).resample(time='1D').min()
 
     tread = tread[list(TREAD_CHANNELS.keys())].rename(TREAD_CHANNELS)
 
