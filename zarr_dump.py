@@ -3,6 +3,7 @@ import sys
 import xarray as xr
 
 from tread import TREAD_CHANNELS
+from util import print_slices_over_time
 
 def dump_zarr_fields(zarr_path):
     """
@@ -43,6 +44,8 @@ def dump_zarr_fields(zarr_path):
     print("\nZarr Dataset Structure:")
     ds = xr.open_zarr(zarr_path)
     print(ds)
+
+    print_slices_over_time(ds)
 
 def main():
     """

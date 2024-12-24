@@ -7,6 +7,7 @@ from dask.diagnostics import ProgressBar
 
 from tread import generate_tread_output
 from era5 import generate_era5_output
+from util import print_slices_over_time
 
 CORRDIFF_GRID_COORD_KEYS = ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
 
@@ -38,13 +39,17 @@ def generate_output_dataset(tread_file, era5_dir, grid, grid_coords, start_date,
         }
     )
 
+    # Normalize both CWB and ERA5 time to 00:00:00, otherwise hour difference in-between causes data corruption after merging.
+    cwb_normalized = cwb.assign_coords(time=cwb['time'].dt.floor('D'))
+    era5_normalized = era5.assign_coords(time=era5['time'].dt.floor('D'))
+
     # Assign CWB and ERA5 data variables
     out = out.assign({
-        "cwb": cwb,
+        "cwb": cwb_normalized,
         "cwb_center": cwb_center,
         "cwb_scale": cwb_scale,
         "cwb_valid": cwb_valid,
-        "era5": era5,
+        "era5": era5_normalized,
         "era5_center": era5_center,
         "era5_valid": era5_valid
     })
@@ -90,7 +95,9 @@ def generate_corrdiff_zarr(start_date, end_date):
     out = generate_output_dataset( \
             data_path["tread_file"], data_path["era5_dir"], \
             grid, grid_coords, start_date, end_date)
+
     print(out)
+    print_slices_over_time(out)
 
     write_to_zarr(f"corrdiff_dataset_{start_date}_{end_date}.zarr", out)
 
