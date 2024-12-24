@@ -22,6 +22,10 @@ def generate_output_dataset(tread_file, era5_dir, grid, grid_coords, start_date,
     era5, era5_center, era5_scale, era5_valid = \
         generate_era5_output(era5_dir, grid, start_date, end_date)
 
+    # Normalize both CWB and ERA5 time to 00:00:00, otherwise hour difference in-between causes data corruption after merging.
+    cwb_normalized = cwb.assign_coords(time=cwb['time'].dt.floor('D'))
+    era5_normalized = era5.assign_coords(time=era5['time'].dt.floor('D'))
+
     # Copy coordinates and remove XTIME if present
     coords = {
         key: value.drop_vars("XTIME") if "XTIME" in getattr(value, "coords", {}) else value
@@ -32,16 +36,12 @@ def generate_output_dataset(tread_file, era5_dir, grid, grid_coords, start_date,
     out = xr.Dataset(
         coords={
             **{key: coords[key] for key in CORRDIFF_GRID_COORD_KEYS},
-            "XTIME": np.datetime64("2024-11-26 15:00:00", "ns"),  # Placeholder for timestamp
-            "time": cwb.time,  # Retain CWB time dimension
+            "XTIME": np.datetime64("2024-12-24 20:00:00", "ns"),  # Placeholder for timestamp
+            "time": cwb_normalized.time,
             "cwb_variable": cwb_variable,
             "era5_scale": ("era5_channel", era5_scale.data)
         }
     )
-
-    # Normalize both CWB and ERA5 time to 00:00:00, otherwise hour difference in-between causes data corruption after merging.
-    cwb_normalized = cwb.assign_coords(time=cwb['time'].dt.floor('D'))
-    era5_normalized = era5.assign_coords(time=era5['time'].dt.floor('D'))
 
     # Assign CWB and ERA5 data variables
     out = out.assign({
