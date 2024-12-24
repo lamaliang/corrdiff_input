@@ -5,8 +5,6 @@ import xarray as xr
 
 from util import regrid_dataset
 
-TREAD_CHANNEL_TP = { "TP": "precipitation", }
-TREAD_CHANNELS_T2MINMAX = { "T2MAX": "maximum_temperature_2m", "T2MIN": "minimum_temperature_2m", }
 TREAD_CHANNELS_ORIGINAL = {
     # Baseline
     "T2": "temperature_2m",
@@ -17,7 +15,14 @@ TREAD_CHANNELS_ORIGINAL = {
     "RH2": "relative_humidity_2m",
     "PSFC": "sea_level_pressure",
 }
-TREAD_CHANNELS = { **TREAD_CHANNEL_TP, **TREAD_CHANNELS_ORIGINAL, **TREAD_CHANNELS_T2MINMAX }
+TREAD_CHANNELS = {
+    # Baseline
+    "TP": "precipitation",
+    **TREAD_CHANNELS_ORIGINAL,
+    # C1.x
+    "T2MAX": "maximum_temperature_2m",
+    "T2MIN": "minimum_temperature_2m",
+}
 
 def get_tread_dataset(file, grid, start_date, end_date):
     channel_keys_original = list(TREAD_CHANNELS_ORIGINAL.keys())
