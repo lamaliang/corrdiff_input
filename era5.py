@@ -75,8 +75,16 @@ def get_era5_dataset(dir, grid, start_date, end_date):
         "oro": "terrain_height"
     })
 
-    # Based on CWA grid, regrid TReAD data over spatial dimensions for all timestamps.
-    era5_out = regrid_dataset(era5, grid)
+    # Based on REF grid, regrid TReAD data over spatial dimensions for all timestamps.
+    lat = grid.XLAT
+    lon = grid.XLONG
+    slon = lon.min().item()
+    elon = lon.max().item()
+    slat = lat.min().item()
+    elat = lat.max().item()
+
+    # due to ERA5 is global data, need to select taiwan domain
+    era5_out = regrid_dataset(era5.sel(latitude=slice(elat, slat),longitude=slice(slon, elon)),grid)
 
     return era5_out
 
