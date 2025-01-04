@@ -9,7 +9,7 @@ from tread import generate_tread_output
 from era5 import generate_era5_output
 from util import print_slices_over_time
 
-CORRDIFF_GRID_COORD_KEYS = ["XLAT", "XLAT_U", "XLAT_V", "XLONG", "XLONG_U", "XLONG_V"]
+CORRDIFF_GRID_COORD_KEYS = ["XLAT", "XLONG"]
 
 ##
 # Functions
@@ -72,14 +72,14 @@ def get_data_path(yyyymm):
     # LOCAL
     if not os.path.exists("/lfs/archive/Reanalysis/"):
         return {
-            "cwa_ref": "./data/cwa_dataset_example.zarr",
+            "coord_ref": "./data/wrf_r288x288_grid_coords.nc",
             "tread_file": f"./data/wrfo2D_d02_{yyyymm}.nc",
             "era5_dir": "./data/era5",
         }
 
     # REMOTE
     return {
-        "cwa_ref": "/lfs/home/dadm/data/cwa_dataset.zarr",
+        "coord_ref": "/lfs/home/lama/work/corrdiff_work/wrf_r288x288_grid_coords.nc",
         "tread_file": f"/lfs/archive/TCCIP_data/TReAD/SFC/hr/wrfo2D_d02_{yyyymm}.nc",
         "era5_dir": "/lfs/archive/Reanalysis/ERA5",
     }
@@ -87,10 +87,10 @@ def get_data_path(yyyymm):
 def generate_corrdiff_zarr(start_date, end_date):
     data_path = get_data_path(str(start_date)[:6])
 
-    # Extract CorrDiff data's grid and coordinates for reference.
-    cwa = xr.open_zarr(data_path["cwa_ref"])
-    grid = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
-    grid_coords = { key: cwa.coords[key] for key in CORRDIFF_GRID_COORD_KEYS }
+    # Extract REF grid.
+    ref = xr.open_dataset(data_path["coord_ref"], engine='netcdf4')
+    grid = xr.Dataset({ "lat": ref.XLAT, "lon": ref.XLONG })
+    grid_coords = { key: ref.coords[key] for key in CORRDIFF_GRID_COORD_KEYS }
 
     out = generate_output_dataset( \
             data_path["tread_file"], data_path["era5_dir"], \

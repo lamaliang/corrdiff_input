@@ -3,7 +3,7 @@ import xarray as xr
 
 def regrid_dataset(ds, grid):
     # Regrid data over the spatial dimensions for all timestamps, based on CWA coordinates.
-    remap = xe.Regridder(ds, grid, method="bilinear")
+    remap = xe.Regridder(ds, grid, method="bilinear", extrap_method=None)
 
     # Regrid each time step while keeping the original coordinates and dimensions
     ds_regrid = xr.concat(
