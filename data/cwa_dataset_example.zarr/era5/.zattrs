@@ -1,8 +1,0 @@
-{
-    "_ARRAY_DIMENSIONS": [
-        "era5_channel",
-        "south_north",
-        "west_east"
-    ],
-    "coordinates": "XTIME XLAT XLONG era5_pressure era5_variable"
-}
