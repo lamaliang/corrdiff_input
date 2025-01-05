@@ -18,7 +18,6 @@ conda env create -f corrdiff_input.yml
 
 ```
 .
-├── cwa_dataset_example.zarr
 ├── era5
 │   ├── ERA5_PRS_q_201801_r1440x721_day.nc
 │   ├── ERA5_PRS_r_201801_r1440x721_day.nc
@@ -32,6 +31,7 @@ conda env create -f corrdiff_input.yml
 │   ├── ERA5_SFC_u10_201801_r1440x721_day.nc
 │   ├── ERA5_SFC_v10_201801_r1440x721_day.nc
 │   └── ERA5_oro_r1440x721.nc
+├── wrf_r288x288_grid_coords.nc
 └── wrfo2D_d02_201801.nc
 ```
 
@@ -49,6 +49,8 @@ python zarr_dump.py <zarr_file>
 ```
 Example: `python zarr_dump.py corrdiff_dataset_test.zarr`
 
+## Dump data for debugging
+Uncomment [lines](https://github.com/bentian/corrdiff_input/blob/cfc60d0a32a8c208bbf100cfd0f838b204fb4077/corrdiff_datagen.py#L59) in `corrdiff_datagen.py`.
 
 ## Run tests
 
