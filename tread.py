@@ -58,7 +58,7 @@ def get_tread_dataset(file, grid, start_date, end_date):
     tread_out["temperature_2m"] = tread_out["temperature_2m"].where(tread_out["temperature_2m"] != 0, fill_value)
     tread_out["temperature_2m"].attrs["_FillValue"] = fill_value
 
-    return tread_out
+    return tread, tread_out
 
 def get_cwb_pressure(cwb_channel):
     return xr.DataArray(
@@ -144,7 +144,7 @@ def get_cwb_valid(tread_out, cwb):
 
 def generate_tread_output(file, grid, start_date, end_date):
     # Extract TReAD data from file.
-    tread_out = get_tread_dataset(file, grid, start_date, end_date)
+    tread_pre_regrid, tread_out = get_tread_dataset(file, grid, start_date, end_date)
 
     ## Prep for generation
 
@@ -162,4 +162,4 @@ def generate_tread_output(file, grid, start_date, end_date):
     cwb_scale = get_cwb_scale(tread_out, cwb_pressure, cwb_variable)
     cwb_valid = get_cwb_valid(tread_out, cwb)
 
-    return cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid
+    return cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid, tread_pre_regrid, tread_out

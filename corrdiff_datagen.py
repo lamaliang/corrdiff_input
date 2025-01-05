@@ -7,7 +7,7 @@ from dask.diagnostics import ProgressBar
 
 from tread import generate_tread_output
 from era5 import generate_era5_output
-from util import print_slices_over_time
+from util import dump_regrid_netcdf, print_slices_over_time
 
 CORRDIFF_GRID_COORD_KEYS = ["XLAT", "XLONG"]
 
@@ -17,9 +17,9 @@ CORRDIFF_GRID_COORD_KEYS = ["XLAT", "XLONG"]
 
 def generate_output_dataset(tread_file, era5_dir, grid, grid_coords, start_date, end_date):
     # Generate CWB (i.e., TReAD) and ERA5 output fields.
-    cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid = \
+    cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid, cwb_pre_regrid, cwb_post_regrid = \
         generate_tread_output(tread_file, grid, start_date, end_date)
-    era5, era5_center, era5_scale, era5_valid = \
+    era5, era5_center, era5_scale, era5_valid, era5_pre_regrid, era5_post_regrid = \
         generate_era5_output(era5_dir, grid, start_date, end_date)
 
     # Normalize both CWB and ERA5 time to 00:00:00, otherwise hour difference in-between causes data corruption after merging.
@@ -55,6 +55,10 @@ def generate_output_dataset(tread_file, era5_dir, grid, grid_coords, start_date,
     })
 
     out = out.drop_vars(["south_north", "west_east", "cwb_channel", "era5_channel"])
+
+    # [DEBUG] Dump data pre- & post-regridding, and print output data slices.
+    # dump_regrid_netcdf(cwb_pre_regrid, cwb_post_regrid, era5_pre_regrid, era5_post_regrid)
+    # print_slices_over_time(out)
 
     return out
 
@@ -95,9 +99,7 @@ def generate_corrdiff_zarr(start_date, end_date):
     out = generate_output_dataset( \
             data_path["tread_file"], data_path["era5_dir"], \
             grid, grid_coords, start_date, end_date)
-
     print(out)
-    print_slices_over_time(out)
 
     write_to_zarr(f"corrdiff_dataset_{start_date}_{end_date}.zarr", out)
 

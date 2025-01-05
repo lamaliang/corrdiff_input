@@ -84,7 +84,7 @@ def get_era5_dataset(dir, grid, start_date, end_date):
     # Based on REF grid, regrid TReAD data over spatial dimensions for all timestamps.
     era5_out = regrid_dataset(era5_crop, grid)
 
-    return era5_out
+    return era5_crop, era5_out
 
 def get_era5(era5_out, stack_era5, era5_channel, era5_pressure_values, era5_variables_values):
     era5_pressure = xr.DataArray(
@@ -172,7 +172,7 @@ def get_era5_valid(era5):
 
 def generate_era5_output(dir, grid, start_date, end_date):
     # Extract ERA5 data from file.
-    era5_out = get_era5_dataset(dir, grid, start_date, end_date)
+    era5_pre_regrid, era5_out = get_era5_dataset(dir, grid, start_date, end_date)
 
     ## Prep for generation
 
@@ -200,4 +200,4 @@ def generate_era5_output(dir, grid, start_date, end_date):
     era5_scale = get_era5_scale(era5)
     era5_valid = get_era5_valid(era5)
 
-    return era5, era5_center, era5_scale, era5_valid
+    return era5, era5_center, era5_scale, era5_valid, era5_pre_regrid, era5_out
