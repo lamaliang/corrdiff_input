@@ -2,9 +2,7 @@ import os
 import xesmf as xe
 import xarray as xr
 
-IMG_SHAPE_X = 208 # == IMG_SHAPE_Y given CorrDiff ZARR requires square images
-
-def regrid_dataset(ds, grid):
+def regrid_dataset(ds, grid) -> xr.Dataset:
     # Regrid the dataset to the target grid:
     # - Use bilinear interpolation to regrid the data.
     # - Extrapolate by using the nearest valid source cell to extrapolate values for target points outside the source grid.
@@ -19,7 +17,7 @@ def regrid_dataset(ds, grid):
 
     return ds_regrid
 
-def dump_regrid_netcdf(cwb_pre_regrid, cwb_post_regrid, era5_pre_regrid, era5_post_regrid):
+def dump_regrid_netcdf(cwb_pre_regrid, cwb_post_regrid, era5_pre_regrid, era5_post_regrid) -> None:
     folder = "./nc_dump/"
     os.makedirs(folder, exist_ok=True)
 
@@ -28,20 +26,5 @@ def dump_regrid_netcdf(cwb_pre_regrid, cwb_post_regrid, era5_pre_regrid, era5_po
     era5_pre_regrid.to_netcdf(folder + "era5_pre_regrid.nc")
     era5_post_regrid.to_netcdf(folder + "era5_post_regrid.nc")
 
-def print_slices_over_time(ds, limit=10):
-    print("\n" + "-"*40)
-
-    end = min(ds.time.size, limit)
-    for t in ds.time[:end]:
-        # Select the data for the current time step
-        cwb_data = ds['cwb'].sel(time=t)
-        era5_data = ds['era5'].sel(time=t)
-        half_shape_x = IMG_SHAPE_X // 2
-
-        print(f"\nTime: {t.values} Half_Shape_X: {half_shape_x}")
-        print("CWB Data Slice:")
-        print(cwb_data[0, half_shape_x].values[half_shape_x - 10: half_shape_x + 10])
-        print("ERA5 Data Slice:")
-        print(era5_data[0, half_shape_x].values[half_shape_x - 10: half_shape_x + 10])
-
-    print("\n" + "-"*40 + "\n")
+def is_local_testing() -> bool:
+    return not os.path.exists("/lfs/archive/Reanalysis/")

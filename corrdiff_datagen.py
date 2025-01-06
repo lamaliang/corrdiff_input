@@ -7,9 +7,10 @@ from dask.diagnostics import ProgressBar
 
 from tread import generate_tread_output
 from era5 import generate_era5_output
-from util import dump_regrid_netcdf, print_slices_over_time
+from util import is_local_testing, dump_regrid_netcdf
 
 CORRDIFF_GRID_COORD_KEYS = ["XLAT", "XLONG"]
+REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
 
 ##
 # Functions
@@ -58,7 +59,6 @@ def generate_output_dataset(tread_file, era5_dir, grid, grid_coords, start_date,
 
     # [DEBUG] Dump data pre- & post-regridding, and print output data slices.
     # dump_regrid_netcdf(cwb_pre_regrid, cwb_post_regrid, era5_pre_regrid, era5_post_regrid)
-    # print_slices_over_time(out)
 
     return out
 
@@ -74,16 +74,14 @@ def write_to_zarr(out_path, out_ds):
 
 def get_data_path(yyyymm):
     # LOCAL
-    if not os.path.exists("/lfs/archive/Reanalysis/"):
+    if is_local_testing():
         return {
-            "coord_ref": "./ref_grid/wrf_208x208_grid_coords.nc",
             "tread_file": f"./data/wrfo2D_d02_{yyyymm}.nc",
             "era5_dir": "./data/era5",
         }
 
     # REMOTE
     return {
-        "coord_ref": "/lfs/home/lama/work/corrdiff_work/wrf_208x208_grid_coords.nc",
         "tread_file": f"/lfs/archive/TCCIP_data/TReAD/SFC/hr/wrfo2D_d02_{yyyymm}.nc",
         "era5_dir": "/lfs/archive/Reanalysis/ERA5",
     }
@@ -92,7 +90,7 @@ def generate_corrdiff_zarr(start_date, end_date):
     data_path = get_data_path(str(start_date)[:6])
 
     # Extract REF grid.
-    ref = xr.open_dataset(data_path["coord_ref"], engine='netcdf4')
+    ref = xr.open_dataset(REF_GRID_NC, engine='netcdf4')
     grid = xr.Dataset({ "lat": ref.XLAT, "lon": ref.XLONG })
     grid_coords = { key: ref.coords[key] for key in CORRDIFF_GRID_COORD_KEYS }
 

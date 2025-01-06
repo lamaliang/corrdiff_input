@@ -3,16 +3,13 @@ import dask.array as da
 import numpy as np
 import xarray as xr
 
-from util import regrid_dataset
+from util import regrid_dataset, is_local_testing
 
 pressure_levels = [500, 700, 850, 925]
 
-def isLocal(folder) -> bool:
-    return "Reanalysis" not in str(folder) # TODO: Remove the hack
-
 def get_prs_paths(folder, subfolder, variables, start_date):
     year = str(start_date)[:4]
-    if isLocal(folder):
+    if is_local_testing():
         return [
             os.path.join(folder, f"./ERA5_PRS_{var}_201801_r1440x721_day.nc")
             for var in variables
@@ -28,7 +25,7 @@ def get_prs_paths(folder, subfolder, variables, start_date):
 
 def get_sfc_paths(folder, subfolder, variables, start_date):
     year = str(start_date)[:4]
-    if isLocal(folder):
+    if is_local_testing():
         return [
             os.path.join(folder, f"./ERA5_SFC_{var}_201801_r1440x721_day.nc")
             for var in variables
