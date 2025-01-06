@@ -3,8 +3,10 @@ import xesmf as xe
 import xarray as xr
 
 def regrid_dataset(ds, grid):
-    # Regrid data over the spatial dimensions for all timestamps, based on CWA coordinates.
-    remap = xe.Regridder(ds, grid, method="bilinear", extrap_method=None)
+    # Regrid the dataset to the target grid:
+    # - Use bilinear interpolation to regrid the data.
+    # - Extrapolate by using the nearest valid source cell to extrapolate values for target points outside the source grid.
+    remap = xe.Regridder(ds, grid, method="bilinear", extrap_method="nearest_s2d")
 
     # Regrid each time step while keeping the original coordinates and dimensions
     ds_regrid = xr.concat(

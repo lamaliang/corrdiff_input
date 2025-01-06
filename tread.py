@@ -50,13 +50,8 @@ def get_tread_dataset(file, grid, start_date, end_date):
 
     tread = tread[list(TREAD_CHANNELS.keys())].rename(TREAD_CHANNELS)
 
-    # Based on CWA grid, regrid TReAD data over spatial dimensions for all timestamps.
+    # Based on REF grid, regrid TReAD data over spatial dimensions for all timestamps.
     tread_out = regrid_dataset(tread, grid)
-
-    # Replace 0 to nan for TReAD domain is smaller than CWB_zarr.
-    fill_value = np.nan
-    tread_out["temperature_2m"] = tread_out["temperature_2m"].where(tread_out["temperature_2m"] != 0, fill_value)
-    tread_out["temperature_2m"].attrs["_FillValue"] = fill_value
 
     return tread, tread_out
 
