@@ -6,11 +6,12 @@ from corrdiff_datagen import generate_output_dataset, CORRDIFF_GRID_COORD_KEYS
 class TestCorrDiffDatagen(unittest.TestCase):
 
     def setUp(self):
-        # Mock input data
-        cwa = xr.open_zarr("./data/cwa_dataset_example.zarr")
-        self.grid = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
-        self.grid_coords = { key: cwa.coords[key] for key in CORRDIFF_GRID_COORD_KEYS }
+        # Extract REF grid.
+        ref = xr.open_dataset("./data/wrf_r288x288_grid_coords.nc", engine='netcdf4')
+        self.grid = xr.Dataset({ "lat": ref.XLAT, "lon": ref.XLONG })
+        self.grid_coords = { key: ref.coords[key] for key in CORRDIFF_GRID_COORD_KEYS }
 
+        # Mock input data
         # self.grid = xr.Dataset({
         #     "lat": (["south_north", "west_east"], np.random.rand(10, 10)),
         #     "lon": (["south_north", "west_east"], np.random.rand(10, 10))

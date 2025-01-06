@@ -6,10 +6,11 @@ import numpy as np
 class TestERA5(unittest.TestCase):
 
     def setUp(self):
-        # Mock input data
-        cwa = xr.open_zarr("./data/cwa_dataset_example.zarr")
-        self.grid = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
+        # Extract REF grid.
+        ref = xr.open_dataset("./data/wrf_r288x288_grid_coords.nc", engine='netcdf4')
+        self.grid = xr.Dataset({ "lat": ref.XLAT, "lon": ref.XLONG })
 
+        # Mock input data
         # self.era5_out = xr.Dataset({
         #     "time": ("time", np.arange(5)),
         #     "south_north": ("south_north", np.arange(10)),
@@ -22,7 +23,7 @@ class TestERA5(unittest.TestCase):
 
     def test_generate_era5_output(self):
         # Mock ERA5 generation
-        era5, era5_center, era5_scale, era5_valid = generate_era5_output(
+        era5, era5_center, era5_scale, era5_valid, _, _ = generate_era5_output(
             "./data/era5", self.grid, self.start_date, self.end_date
         )
         self.assertIsInstance(era5, xr.DataArray)

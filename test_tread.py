@@ -6,10 +6,11 @@ import numpy as np
 class TestTREAD(unittest.TestCase):
 
     def setUp(self):
-        # Mock input data
-        cwa = xr.open_zarr("./data/cwa_dataset_example.zarr")
-        self.grid = xr.Dataset({ "lat": cwa.XLAT, "lon": cwa.XLONG })
+        # Extract REF grid.
+        ref = xr.open_dataset("./data/wrf_r288x288_grid_coords.nc", engine='netcdf4')
+        self.grid = xr.Dataset({ "lat": ref.XLAT, "lon": ref.XLONG })
 
+        # Mock input data
         # self.tread_out = xr.Dataset({
         #     "time": ("time", np.arange(5)),
         #     "south_north": ("south_north", np.arange(10)),
@@ -21,7 +22,7 @@ class TestTREAD(unittest.TestCase):
         self.end_date = "20180105"
 
     def test_generate_tread_output(self):
-        cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid = generate_tread_output(
+        cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid, _, _ = generate_tread_output(
             "./data/wrfo2D_d02_201801.nc", self.grid, self.start_date, self.end_date
         )
         self.assertIsInstance(cwb, xr.DataArray)
