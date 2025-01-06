@@ -76,8 +76,8 @@ def get_data_path(yyyymm):
     # LOCAL
     if not os.path.exists("/lfs/archive/Reanalysis/"):
         return {
-            "coord_ref": "./data/wrf_208x208_grid_coords.nc",
-            "tread_file": f"./data/tread/wrfo2D_d02_{yyyymm}.nc",
+            "coord_ref": "./ref_grid/wrf_208x208_grid_coords.nc",
+            "tread_file": f"./data/wrfo2D_d02_{yyyymm}.nc",
             "era5_dir": "./data/era5",
         }
 

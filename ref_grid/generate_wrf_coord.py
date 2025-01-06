@@ -7,7 +7,7 @@ clon, clat = 120.9465, 23.6745  # Center latitude and longitude
 ny, nx = 208, 208               # Grid dimensions
 
 # === Input file ===
-infile = './data/TReAD_wrf_d02_info.nc'
+infile = './TReAD_wrf_d02_info.nc'
 nc_in = Dataset(infile, mode='r')
 
 lat = nc_in.variables['XLAT'][:]
@@ -32,7 +32,7 @@ ter_grid = ter[slat_idx:elat_idx, slon_idx:elon_idx].astype("float32")
 lmask_grid = lmask[slat_idx:elat_idx, slon_idx:elon_idx].astype("float32")
 
 # === Output file ===
-output_file = f"./data/wrf_{ny}x{nx}_grid_coords.nc"
+output_file = f"./wrf_{ny}x{nx}_grid_coords.nc"
 if os.path.exists(output_file):
     os.remove(output_file)
 
@@ -63,4 +63,4 @@ with Dataset(output_file, mode="w", format="NETCDF4") as ncfile:
     nlmask.units = "land mask"
     ncfile.setncattr("description", f"New CorrDiff Training REF grid {ny}x{nx}")
 
-print(f"Output written to: {output_file}")
+print(f"Output written to => {output_file}")
