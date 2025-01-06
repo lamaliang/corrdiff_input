@@ -2,6 +2,8 @@ import os
 import xesmf as xe
 import xarray as xr
 
+IMG_SHAPE_X = 208 # == IMG_SHAPE_Y given CorrDiff ZARR requires square images
+
 def regrid_dataset(ds, grid):
     # Regrid the dataset to the target grid:
     # - Use bilinear interpolation to regrid the data.
@@ -34,7 +36,7 @@ def print_slices_over_time(ds, limit=10):
         # Select the data for the current time step
         cwb_data = ds['cwb'].sel(time=t)
         era5_data = ds['era5'].sel(time=t)
-        half_shape_x = 288 // 2
+        half_shape_x = IMG_SHAPE_X // 2
 
         print(f"\nTime: {t.values} Half_Shape_X: {half_shape_x}")
         print("CWB Data Slice:")

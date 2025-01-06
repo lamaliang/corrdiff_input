@@ -76,14 +76,14 @@ def get_data_path(yyyymm):
     # LOCAL
     if not os.path.exists("/lfs/archive/Reanalysis/"):
         return {
-            "coord_ref": "./data/wrf_r288x288_grid_coords.nc",
-            "tread_file": f"./data/wrfo2D_d02_{yyyymm}.nc",
+            "coord_ref": "./data/wrf_208x208_grid_coords.nc",
+            "tread_file": f"./data/tread/wrfo2D_d02_{yyyymm}.nc",
             "era5_dir": "./data/era5",
         }
 
     # REMOTE
     return {
-        "coord_ref": "/lfs/home/lama/work/corrdiff_work/wrf_r288x288_grid_coords.nc",
+        "coord_ref": "/lfs/home/lama/work/corrdiff_work/wrf_208x208_grid_coords.nc",
         "tread_file": f"/lfs/archive/TCCIP_data/TReAD/SFC/hr/wrfo2D_d02_{yyyymm}.nc",
         "era5_dir": "/lfs/archive/Reanalysis/ERA5",
     }
