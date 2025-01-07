@@ -45,7 +45,8 @@ def get_tread_dataset(file, grid, start_date, end_date):
         tread_files,
         preprocess=lambda ds: ds[surface_vars].assign_coords(
             time=pd.to_datetime(ds['Time'].values.astype(str), format='%Y-%m-%d_%H:%M:%S')
-        ).sel(time=slice(start_datetime, end_datetime))
+        ).sel(time=slice(start_datetime, end_datetime)),
+        combine='by_coords'
     )
 
     # Calculate daily mean for original channels.
