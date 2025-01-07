@@ -2,17 +2,15 @@ import os
 import dask.array as da
 import numpy as np
 import xarray as xr
+import pandas as pd
 
-from util import regrid_dataset
+from util import regrid_dataset, is_local_testing
 
 pressure_levels = [500, 700, 850, 925]
 
-def isLocal(folder) -> bool:
-    return "Reanalysis" not in str(folder) # TODO: Remove the hack
-
-def get_prs_paths(folder, subfolder, variables, start_date):
-    year = str(start_date)[:4]
-    if isLocal(folder):
+def get_prs_paths(folder, subfolder, variables, start_date, end_date):
+    date = pd.date_range(start=start_date, end=end_date, freq="MS").strftime("%Y%m").tolist()
+    if is_local_testing():
         return [
             os.path.join(folder, f"./ERA5_PRS_{var}_201801_r1440x721_day.nc")
             for var in variables
@@ -20,15 +18,15 @@ def get_prs_paths(folder, subfolder, variables, start_date):
 
     return [
         os.path.join(
-            folder, "PRS", subfolder, var, str(year),
-            f"ERA5_PRS_{var}_{year}{month:02d}_r1440x721_day.nc"
+            folder, "PRS", subfolder, var, yyyymm[:4],
+            f"ERA5_PRS_{var}_{yyyymm}_r1440x721_day.nc"
         )
-        for var in variables for month in range(1, 13)
+        for var in variables for yyyymm in date 
     ]
 
-def get_sfc_paths(folder, subfolder, variables, start_date):
-    year = str(start_date)[:4]
-    if isLocal(folder):
+def get_sfc_paths(folder, subfolder, variables, start_date, end_date):
+    date = pd.date_range(start=start_date, end=end_date, freq="MS").strftime("%Y%m").tolist()
+    if is_local_testing():
         return [
             os.path.join(folder, f"./ERA5_SFC_{var}_201801_r1440x721_day.nc")
             for var in variables
@@ -36,10 +34,10 @@ def get_sfc_paths(folder, subfolder, variables, start_date):
 
     return [
         os.path.join(
-            folder, "SFC", subfolder, var, str(year),
-            f"ERA5_SFC_{var}_{year}{month:02d}_r1440x721_day.nc"
+            folder, "SFC", subfolder, var, yyyymm[:4],
+            f"ERA5_SFC_{var}_{yyyymm}_r1440x721_day.nc"
         )
-        for var in variables for month in range(1, 13)
+        for var in variables for yyyymm in date 
     ]
 
 def get_era5_dataset(dir, grid, start_date, end_date):
@@ -48,11 +46,11 @@ def get_era5_dataset(dir, grid, start_date, end_date):
 
     # pressure_level
     duration = slice(str(start_date), str(end_date))
-    prs_paths = get_prs_paths(dir, "day", pressure_level_vars, start_date)
+    prs_paths = get_prs_paths(dir, "day", pressure_level_vars, start_date, end_date)
     era5_prs = xr.open_mfdataset(prs_paths, combine='by_coords').sel(level=pressure_levels, time=duration)
 
     # surface
-    sfc_paths = get_sfc_paths(dir, "day", surface_vars, start_date)
+    sfc_paths = get_sfc_paths(dir, "day", surface_vars, start_date, end_date)
     era5_sfc = xr.open_mfdataset(sfc_paths, combine='by_coords').sel(time=duration)
     era5_sfc['tp'] = era5_sfc['tp'] * 24 * 1000
     era5_sfc['tp'].attrs['units'] = 'mm/day' # Convert unit
@@ -75,18 +73,16 @@ def get_era5_dataset(dir, grid, start_date, end_date):
         "oro": "terrain_height"
     })
 
+    # Crop to Taiwan domain given ERA5 is global data.
+    lat, lon = grid.XLAT, grid.XLONG
+    era5_crop = era5.sel(
+        latitude=slice(lat.max().item(), lat.min().item()),
+        longitude=slice(lon.min().item(), lon.max().item()))
+
     # Based on REF grid, regrid TReAD data over spatial dimensions for all timestamps.
-    lat = grid.XLAT
-    lon = grid.XLONG
-    slon = lon.min().item()
-    elon = lon.max().item()
-    slat = lat.min().item()
-    elat = lat.max().item()
+    era5_out = regrid_dataset(era5_crop, grid)
 
-    # due to ERA5 is global data, need to select taiwan domain
-    era5_out = regrid_dataset(era5.sel(latitude=slice(elat, slat),longitude=slice(slon, elon)),grid)
-
-    return era5_out
+    return era5_crop, era5_out
 
 def get_era5(era5_out, stack_era5, era5_channel, era5_pressure_values, era5_variables_values):
     era5_pressure = xr.DataArray(
@@ -174,7 +170,7 @@ def get_era5_valid(era5):
 
 def generate_era5_output(dir, grid, start_date, end_date):
     # Extract ERA5 data from file.
-    era5_out = get_era5_dataset(dir, grid, start_date, end_date)
+    era5_pre_regrid, era5_out = get_era5_dataset(dir, grid, start_date, end_date)
 
     ## Prep for generation
 
@@ -202,4 +198,4 @@ def generate_era5_output(dir, grid, start_date, end_date):
     era5_scale = get_era5_scale(era5)
     era5_valid = get_era5_valid(era5)
 
-    return era5, era5_center, era5_scale, era5_valid
+    return era5, era5_center, era5_scale, era5_valid, era5_pre_regrid, era5_out

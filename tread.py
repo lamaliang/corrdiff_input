@@ -5,7 +5,7 @@ import xarray as xr
 
 from util import regrid_dataset
 
-TREAD_CHANNELS_NO_TP = {
+TREAD_CHANNELS_ORIGINAL = {
     # Baseline
     "T2": "temperature_2m",
     "U10": "eastward_wind_10m",
@@ -15,17 +15,18 @@ TREAD_CHANNELS_NO_TP = {
     "RH2": "relative_humidity_2m",
     "PSFC": "sea_level_pressure",
 }
-#TREAD_CHANNELS = { "TP": "precipitation" } | TREAD_CHANNELS_NO_TP
-TREAD_CHANNELS = (
-    {"TP": "precipitation",
-     "T2MAX": "maximum_temperature_2m",
-     "T2MIN": "minimum_temperature_2m"}
-    | TREAD_CHANNELS_NO_TP
-)
+TREAD_CHANNELS = {
+    # Baseline
+    "TP": "precipitation",
+    **TREAD_CHANNELS_ORIGINAL,
+    # C1.x
+    "T2MAX": "maximum_temperature_2m",
+    "T2MIN": "minimum_temperature_2m",
+}
 
 def get_tread_dataset(file, grid, start_date, end_date):
-    channel_keys_no_tp = list(TREAD_CHANNELS_NO_TP.keys())
-    surface_vars = ['RAINC', 'RAINNC'] + channel_keys_no_tp
+    channel_keys_original = list(TREAD_CHANNELS_ORIGINAL.keys())
+    surface_vars = ['RAINC', 'RAINNC'] + channel_keys_original
 
     start_datetime = pd.to_datetime(str(start_date), format='%Y%m%d')
     end_datetime = pd.to_datetime(str(end_date), format='%Y%m%d')
@@ -38,23 +39,21 @@ def get_tread_dataset(file, grid, start_date, end_date):
         ).sel(time=slice(start_datetime, end_datetime))
     )
 
-    # Calculate daily mean for non-TP channels, and sum TP = RAINC+RAINNC & accumulate daily.
-    tread = tread_surface[channel_keys_no_tp].resample(time='1D').mean()
+    # Calculate daily mean for original channels.
+    tread = tread_surface[channel_keys_original].resample(time='1D').mean()
+    # Compute additional channels:
+    # - Sum TP = RAINC+RAINNC & accumulate daily, and
+    # - Find T2's max and min.
     tread['TP'] = (tread_surface['RAINC'] + tread_surface['RAINNC']).resample(time='1D').sum()
     tread['T2MAX'] = (tread_surface['T2']).resample(time='1D').max()
     tread['T2MIN'] = (tread_surface['T2']).resample(time='1D').min()
 
     tread = tread[list(TREAD_CHANNELS.keys())].rename(TREAD_CHANNELS)
 
-    # Based on CWA grid, regrid TReAD data over spatial dimensions for all timestamps.
+    # Based on REF grid, regrid TReAD data over spatial dimensions for all timestamps.
     tread_out = regrid_dataset(tread, grid)
 
-    # Replace 0 to nan for TReAD domain is smaller than CWB_zarr.
-    fill_value = np.nan
-    tread_out["temperature_2m"] = tread_out["temperature_2m"].where(tread_out["temperature_2m"] != 0, fill_value)
-    tread_out["temperature_2m"].attrs["_FillValue"] = fill_value
-
-    return tread_out
+    return tread, tread_out
 
 def get_cwb_pressure(cwb_channel):
     return xr.DataArray(
@@ -140,7 +139,7 @@ def get_cwb_valid(tread_out, cwb):
 
 def generate_tread_output(file, grid, start_date, end_date):
     # Extract TReAD data from file.
-    tread_out = get_tread_dataset(file, grid, start_date, end_date)
+    tread_pre_regrid, tread_out = get_tread_dataset(file, grid, start_date, end_date)
 
     ## Prep for generation
 
@@ -158,4 +157,4 @@ def generate_tread_output(file, grid, start_date, end_date):
     cwb_scale = get_cwb_scale(tread_out, cwb_pressure, cwb_variable)
     cwb_valid = get_cwb_valid(tread_out, cwb)
 
-    return cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid
+    return cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid, tread_pre_regrid, tread_out

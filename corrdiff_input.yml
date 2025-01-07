@@ -39,7 +39,7 @@ dependencies:
   - bzip2=1.0.8=h80987f9_6
   - c-ares=1.19.1=h80987f9_0
   - ca-certificates=2024.11.26=hca03da5_0
-  - certifi=2024.8.30=py312hca03da5_0
+  - certifi=2024.12.14=py312hca03da5_0
   - cf_xarray=0.10.0=pyhd8ed1ab_0
   - cffi=1.17.1=py312h3eb5a62_0
   - cftime=1.6.4=py312h755e627_1
@@ -64,6 +64,7 @@ dependencies:
   - freetype=2.12.1=h1192e45_0
   - fsspec=2024.6.1=py312hca03da5_0
   - geos=3.9.1=h9f76cd9_2
+  - gettext=0.21.0=hbdbcc25_2
   - gflags=2.2.2=h313beb8_1
   - glog=0.5.0=h313beb8_1
   - h11=0.14.0=py312hca03da5_0
@@ -126,7 +127,9 @@ dependencies:
   - libssh2=1.11.0=h3e2b118_0
   - libthrift=0.15.0=h73c2103_2
   - libtiff=4.5.1=h313beb8_0
+  - libudunits2=2.2.28=h5f3f34b_3
   - libwebp-base=1.3.2=h80987f9_1
+  - libxcb=1.17.0=hdb1d25a_0
   - libxml2=2.13.5=h0b34f26_0
   - libzip=1.10.1=ha0bc3c6_3
   - libzlib=1.2.13=hfb2fe0b_6
@@ -145,6 +148,7 @@ dependencies:
   - nbconvert=7.16.4=py312hca03da5_0
   - nbformat=5.10.4=py312hca03da5_0
   - ncurses=6.4=h313beb8_0
+  - ncview=2.1.8=h196b308_11
   - nest-asyncio=1.6.0=py312hca03da5_0
   - netcdf-fortran=4.6.1=mpi_mpich_h32330d0_6
   - netcdf4=1.6.5=nompi_py312h30cf68c_102
@@ -172,6 +176,7 @@ dependencies:
   - prompt-toolkit=3.0.43=py312hca03da5_0
   - prompt_toolkit=3.0.43=hd3eb1b0_0
   - psutil=5.9.0=py312h80987f9_0
+  - pthread-stubs=0.3=h1a28f6b_1
   - ptyprocess=0.7.0=pyhd3eb1b0_2
   - pure_eval=0.2.2=pyhd3eb1b0_0
   - pyarrow=16.1.0=py312hd77ebd4_0
@@ -218,6 +223,7 @@ dependencies:
   - typing-extensions=4.11.0=py312hca03da5_0
   - typing_extensions=4.11.0=py312hca03da5_0
   - tzdata=2024b=h04d1e81_0
+  - udunits2=2.2.28=h5f3f34b_3
   - urllib3=2.2.3=py312hca03da5_0
   - utf8proc=2.6.1=h80987f9_1
   - wcwidth=0.2.5=pyhd3eb1b0_0
@@ -226,6 +232,18 @@ dependencies:
   - wheel=0.44.0=py312hca03da5_0
   - xarray=2023.6.0=py312hca03da5_0
   - xesmf=0.8.8=pyhd8ed1ab_0
+  - xorg-libice=1.1.2=h5505292_0
+  - xorg-libsm=1.2.5=h5505292_0
+  - xorg-libx11=1.8.10=h6a5fb8c_1
+  - xorg-libxau=1.0.12=h5505292_0
+  - xorg-libxaw=1.0.14=h3422bc3_1
+  - xorg-libxdmcp=1.1.5=hd74edd7_0
+  - xorg-libxext=1.3.6=hd74edd7_0
+  - xorg-libxmu=1.1.3=h99b78c6_1
+  - xorg-libxpm=3.5.13=h3422bc3_0
+  - xorg-libxt=1.3.1=h5505292_0
+  - xorg-xextproto=7.3.0=hd74edd7_1004
+  - xorg-xproto=7.0.31=h1a28f6b_1007
   - xyzservices=2022.9.0=py312hca03da5_1
   - xz=5.4.6=h80987f9_1
   - yaml=0.2.5=h1a28f6b_0

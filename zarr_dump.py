@@ -4,6 +4,24 @@ import xarray as xr
 
 from tread import TREAD_CHANNELS
 
+def print_slices_over_time(ds, limit=10):
+    print("\n" + "-"*40)
+
+    end = min(ds.time.size, limit)
+    for t in ds.time[:end]:
+        # Select the data for the current time step
+        cwb_data = ds['cwb'].sel(time=t)
+        era5_data = ds['era5'].sel(time=t)
+        half_shape_x = 208 // 2
+
+        print(f"\nTime: {t.values} Half_Shape_X: {half_shape_x}")
+        print("CWB Data Slice:")
+        print(cwb_data[0, half_shape_x].values[half_shape_x - 10: half_shape_x + 10])
+        print("ERA5 Data Slice:")
+        print(era5_data[0, half_shape_x].values[half_shape_x - 10: half_shape_x + 10])
+
+    print("\n" + "-"*40 + "\n")
+
 def dump_zarr_fields(zarr_path):
     """
     Dumps specified fields from a Zarr file and prints their content and structure.
@@ -43,6 +61,8 @@ def dump_zarr_fields(zarr_path):
     print("\nZarr Dataset Structure:")
     ds = xr.open_zarr(zarr_path)
     print(ds)
+
+    print_slices_over_time(ds)
 
 def main():
     """
