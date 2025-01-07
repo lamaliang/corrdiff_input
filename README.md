@@ -14,7 +14,7 @@ python generate_wrf_coord.py
 ```
 
 ## Prepare TReAD and ERA5 `.nc` files (local testing only)
-- Put TReAD file below under `data/tread`.
+- Put TReAD file below under `data/tread/`.
   - `wrfo2D_d02_{yyyymm}.nc`
 - Put ERA5 files below under `data/era5/`.
   - `ERA5_PRS_*_{yyyymm}_r1440x721_day.nc`
@@ -24,7 +24,7 @@ python generate_wrf_coord.py
 ### Example
 
 ```
-.
+data
 ├── era5
 │   ├── ERA5_PRS_q_201801_r1440x721_day.nc
 │   ├── ERA5_PRS_r_201801_r1440x721_day.nc
@@ -38,7 +38,10 @@ python generate_wrf_coord.py
 │   ├── ERA5_SFC_u10_201801_r1440x721_day.nc
 │   ├── ERA5_SFC_v10_201801_r1440x721_day.nc
 │   └── ERA5_oro_r1440x721.nc
-└── wrfo2D_d02_201801.nc
+└── tread
+    ├── wrfo2D_d02_201801.nc
+    ├── wrfo2D_d02_201802.nc
+    └── wrfo2D_d02_201803.nc
 ```
 
 ## Generate CorrDiff dataset
