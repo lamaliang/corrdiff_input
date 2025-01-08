@@ -149,6 +149,7 @@ def get_cwb_valid(tread_out, cwb):
 def generate_tread_output(file, grid, start_date, end_date):
     # Extract TReAD data from file.
     tread_pre_regrid, tread_out = get_tread_dataset(file, grid, start_date, end_date)
+    print(f"\nTReAD dataset =>\n {tread_out}")
 
     ## Prep for generation
 

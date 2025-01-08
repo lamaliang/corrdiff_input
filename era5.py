@@ -171,6 +171,7 @@ def get_era5_valid(era5):
 def generate_era5_output(dir, grid, start_date, end_date):
     # Extract ERA5 data from file.
     era5_pre_regrid, era5_out = get_era5_dataset(dir, grid, start_date, end_date)
+    print(f"\nERA5 dataset =>\n {era5_out}")
 
     ## Prep for generation
 
