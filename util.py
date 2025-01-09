@@ -17,8 +17,8 @@ def regrid_dataset(ds, grid) -> xr.Dataset:
 
     return ds_regrid
 
-def dump_regrid_netcdf(cwb_pre_regrid, cwb_post_regrid, era5_pre_regrid, era5_post_regrid) -> None:
-    folder = "./nc_dump/"
+def dump_regrid_netcdf(subdir, cwb_pre_regrid, cwb_post_regrid, era5_pre_regrid, era5_post_regrid) -> None:
+    folder = f"./nc_dump/{subdir}/"
     os.makedirs(folder, exist_ok=True)
 
     cwb_pre_regrid.to_netcdf(folder + "tread_pre_regrid.nc")

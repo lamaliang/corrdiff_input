@@ -58,7 +58,8 @@ def generate_output_dataset(tread_file, era5_dir, grid, grid_coords, start_date,
     out = out.drop_vars(["south_north", "west_east", "cwb_channel", "era5_channel"])
 
     # [DEBUG] Dump data pre- & post-regridding, and print output data slices.
-    # dump_regrid_netcdf(cwb_pre_regrid, cwb_post_regrid, era5_pre_regrid, era5_post_regrid)
+    # dump_regrid_netcdf(f"{start_date}_{end_date}", \
+    #     cwb_pre_regrid, cwb_post_regrid, era5_pre_regrid, era5_post_regrid)
 
     return out
 
