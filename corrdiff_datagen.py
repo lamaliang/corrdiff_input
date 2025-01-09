@@ -7,7 +7,7 @@ from dask.diagnostics import ProgressBar
 
 from tread import generate_tread_output
 from era5 import generate_era5_output
-from util import is_local_testing, dump_regrid_netcdf
+from util import is_local_testing, verify_dataset, dump_regrid_netcdf
 
 CORRDIFF_GRID_COORD_KEYS = ["XLAT", "XLONG"]
 REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
@@ -95,11 +95,19 @@ def generate_corrdiff_zarr(start_date, end_date):
     grid = xr.Dataset({ "lat": ref.XLAT, "lon": ref.XLONG })
     grid_coords = { key: ref.coords[key] for key in CORRDIFF_GRID_COORD_KEYS }
 
+    # Generate the output dataset.
     out = generate_output_dataset( \
             data_path["tread_dir"], data_path["era5_dir"], \
             grid, grid_coords, start_date, end_date)
     print(f"\nZARR dataset =>\n {out}")
 
+    # Verify the output dataset.
+    passed, message = verify_dataset(out)
+    if not passed:
+        print(f"\nDataset verification failed => {message}")
+        return
+
+    # Write the output dataset to ZARR.
     write_to_zarr(f"corrdiff_dataset_{start_date}_{end_date}.zarr", out)
 
 def main():
