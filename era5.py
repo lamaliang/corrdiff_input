@@ -98,7 +98,7 @@ def get_era5(era5_out, stack_era5, era5_channel, era5_pressure_values, era5_vari
         name="era5_variable"
     )
 
-    return xr.DataArray(
+    era5 = xr.DataArray(
         stack_era5,
         dims=["time", "era5_channel", "south_north", "west_east"],
         coords={
@@ -113,6 +113,16 @@ def get_era5(era5_out, stack_era5, era5_channel, era5_pressure_values, era5_vari
         },
         name="era5"
     )
+
+    era5 = era5.assign_coords(time=era5['time'].dt.floor('D'))
+    era5 = era5.chunk({
+        "time": 1,
+        "era5_channel": era5_channel.size,
+        "south_north": era5.south_north.size,
+        "west_east": era5.west_east.size
+    })
+
+    return era5
 
 def get_era5_center(era5):
     era5_mean = da.stack(
@@ -171,7 +181,6 @@ def get_era5_valid(era5):
 def generate_era5_output(dir, grid, start_date, end_date):
     # Extract ERA5 data from file.
     era5_pre_regrid, era5_out = get_era5_dataset(dir, grid, start_date, end_date)
-    print(f"\nERA5 dataset =>\n {era5_out}")
 
     ## Prep for generation
 
@@ -195,6 +204,7 @@ def generate_era5_output(dir, grid, start_date, end_date):
     ## Generate output fields
 
     era5 = get_era5(era5_out, stack_era5, era5_channel, era5_pressure_values, era5_variables_values)
+    print(f"\nERA5 dataset =>\n {era5}")
     era5_center = get_era5_center(era5)
     era5_scale = get_era5_scale(era5)
     era5_valid = get_era5_valid(era5)
