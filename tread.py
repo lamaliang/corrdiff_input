@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from util import regrid_dataset, is_local_testing
+from util import regrid_dataset, create_and_process_dataarray
 
 TREAD_CHANNELS_ORIGINAL = {
     # Baseline
@@ -86,21 +86,25 @@ def get_cwb_variable(cwb_var_names, cwb_pressure):
 
 def get_cwb(tread_out, cwb_var_names, cwb_channel, cwb_pressure, cwb_variable):
     stack_tread = da.stack([tread_out[var].data for var in cwb_var_names], axis=1)
-    return xr.DataArray(
-        stack_tread,
-        dims=["time", "cwb_channel", "south_north", "west_east"],
-        coords={
-            "time": tread_out["time"],
-            "cwb_channel": cwb_channel,
-            "south_north": tread_out["south_north"],
-            "west_east": tread_out["west_east"],
-            "XLAT": tread_out["XLAT"],
-            "XLONG": tread_out["XLONG"],
-            "cwb_pressure": cwb_pressure,
-            "cwb_variable": cwb_variable,
-        },
-        name="cwb"
-    )
+    cwb_dims = ["time", "cwb_channel", "south_north", "west_east"]
+    cwb_coords = {
+        "time": tread_out["time"],
+        "cwb_channel": cwb_channel,
+        "south_north": tread_out["south_north"],
+        "west_east": tread_out["west_east"],
+        "XLAT": tread_out["XLAT"],
+        "XLONG": tread_out["XLONG"],
+        "cwb_pressure": cwb_pressure,
+        "cwb_variable": cwb_variable,
+    }
+    cwb_chunk_sizes = {
+        "time": 1,
+        "cwb_channel": cwb_channel.size,
+        "south_north": tread_out["south_north"].size,
+        "west_east": tread_out["west_east"].size,
+    }
+
+    return create_and_process_dataarray("cwb", stack_tread, cwb_dims, cwb_coords, cwb_chunk_sizes)
 
 def get_cwb_center(tread_out, cwb_pressure, cwb_variable):
     tread_mean = da.stack(
