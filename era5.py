@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from util import regrid_dataset, is_local_testing
+from util import regrid_dataset, create_and_process_dataarray, is_local_testing
 
-pressure_levels = [500, 700, 850, 925]
+PRESSURE_LEVELS = [500, 700, 850, 925]
 
 def get_prs_paths(folder, subfolder, variables, start_date, end_date):
     date_range = pd.date_range(start=start_date, end=end_date, freq="MS").strftime("%Y%m").tolist()
@@ -47,7 +47,7 @@ def get_era5_dataset(dir, grid, start_date, end_date):
     # pressure_level
     duration = slice(str(start_date), str(end_date))
     prs_paths = get_prs_paths(dir, "day", pressure_level_vars, start_date, end_date)
-    era5_prs = xr.open_mfdataset(prs_paths, combine='by_coords').sel(level=pressure_levels, time=duration)
+    era5_prs = xr.open_mfdataset(prs_paths, combine='by_coords').sel(level=PRESSURE_LEVELS, time=duration)
 
     # surface
     sfc_paths = get_sfc_paths(dir, "day", surface_vars, start_date, end_date)
@@ -84,45 +84,65 @@ def get_era5_dataset(dir, grid, start_date, end_date):
 
     return era5_crop, era5_out
 
-def get_era5(era5_out, stack_era5, era5_channel, era5_pressure_values, era5_variables_values):
+def get_era5_pressure(era5_channel):
+    era5_pressure_values = np.array(
+        [np.nan] + list(np.repeat(PRESSURE_LEVELS, 4)) + [np.nan] * 4
+    )
     era5_pressure = xr.DataArray(
         da.from_array(era5_pressure_values, chunks=(len(era5_pressure_values))),
         dims=["era5_channel"],
-        coords={"era5_channel": era5_channel},
+        coords={ "era5_channel": era5_channel },
         name="era5_pressure"
+    )
+
+    return era5_pressure, era5_pressure_values
+
+def get_era5_variable(era5_channel):
+    era5_variables_values = (
+        ['precipitation'] + ['geopotential_height', 'temperature', 'eastward_wind', 'northward_wind'] * 4 +
+        ['temperature_2m', 'eastward_wind_10m', 'northward_wind_10m', 'terrain_height']
     )
     era5_variable = xr.DataArray(
         data=da.from_array(era5_variables_values, chunks=(len(era5_variables_values))),
         dims=["era5_channel"],
-        coords={"era5_channel": era5_channel},
+        coords={ "era5_channel": era5_channel },
         name="era5_variable"
     )
 
-    era5 = xr.DataArray(
-        stack_era5,
-        dims=["time", "era5_channel", "south_north", "west_east"],
-        coords={
-            "time": era5_out["time"],
-            "era5_channel": era5_channel,
-            "south_north": era5_out["south_north"],
-            "west_east": era5_out["west_east"],
-            "XLAT": era5_out["XLAT"],
-            "XLONG": era5_out["XLONG"],
-            "era5_pressure": era5_pressure,
-            "era5_variable": era5_variable,
-        },
-        name="era5"
-    )
+    return era5_variable, era5_variables_values
 
-    era5 = era5.assign_coords(time=era5['time'].dt.floor('D'))
-    era5 = era5.chunk({
+def get_era5(era5_out):
+    era5_channel = np.arange(21)
+    era5_pressure, era5_pressure_values = get_era5_pressure(era5_channel)
+    era5_variable, era5_variables_values = get_era5_variable(era5_channel)
+
+    # Create ERA5 DataArray
+    stack_era5 = da.stack(
+        [
+            era5_out[var].sel(level=plev).data if "level" in era5_out[var].dims else era5_out[var].data
+            for var, plev in zip(era5_variables_values, era5_pressure_values)
+        ],
+        axis=1
+    )
+    era5_dims = ["time", "era5_channel", "south_north", "west_east"]
+    era5_coords = {
+        "time": era5_out["time"],
+        "era5_channel": era5_channel,
+        "south_north": era5_out["south_north"],
+        "west_east": era5_out["west_east"],
+        "XLAT": era5_out["XLAT"],
+        "XLONG": era5_out["XLONG"],
+        "era5_pressure": era5_pressure,
+        "era5_variable": era5_variable,
+    }
+    era5_chunk_sizes = {
         "time": 1,
         "era5_channel": era5_channel.size,
-        "south_north": era5.south_north.size,
-        "west_east": era5.west_east.size
-    })
+        "south_north": era5_out["south_north"].size,
+        "west_east": era5_out["west_east"].size,
+    }
 
-    return era5
+    return create_and_process_dataarray("era5", stack_era5, era5_dims, era5_coords, era5_chunk_sizes)
 
 def get_era5_center(era5):
     era5_mean = da.stack(
@@ -181,30 +201,10 @@ def get_era5_valid(era5):
 def generate_era5_output(dir, grid, start_date, end_date):
     # Extract ERA5 data from file.
     era5_pre_regrid, era5_out = get_era5_dataset(dir, grid, start_date, end_date)
+    print(f"\nERA5 dataset =>\n {era5_out}")
 
-    ## Prep for generation
-
-    era5_channel = np.arange(21)
-    era5_pressure_values = np.array(
-        [np.nan] + list(np.repeat(pressure_levels, 4)) + [np.nan] * 4
-    )
-    era5_variables_values = (
-        ['precipitation'] + ['geopotential_height', 'temperature', 'eastward_wind', 'northward_wind'] * 4 +
-        ['temperature_2m', 'eastward_wind_10m', 'northward_wind_10m', 'terrain_height']
-    )
-
-    stack_era5 = da.stack(
-        [
-            era5_out[var].sel(level=plev).data if "level" in era5_out[var].dims else era5_out[var].data
-            for var, plev in zip(era5_variables_values, era5_pressure_values)
-        ],
-        axis=1
-    )
-
-    ## Generate output fields
-
-    era5 = get_era5(era5_out, stack_era5, era5_channel, era5_pressure_values, era5_variables_values)
-    print(f"\nERA5 dataset =>\n {era5}")
+    # Generate output fields
+    era5 = get_era5(era5_out)
     era5_center = get_era5_center(era5)
     era5_scale = get_era5_scale(era5)
     era5_valid = get_era5_valid(era5)

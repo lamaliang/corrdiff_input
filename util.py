@@ -17,7 +17,37 @@ def regrid_dataset(ds, grid) -> xr.Dataset:
 
     return ds_regrid
 
-def verify_dataset(dataset):
+def create_and_process_dataarray(name, stack_data, dims, coords, chunk_sizes) -> xr.DataArray:
+    """
+    Creates and processes an xarray.DataArray with specified dimensions, coordinates, and chunk sizes.
+
+    Parameters:
+    - name: Name of the DataArray.
+    - stack_data: The stacked data to initialize the DataArray.
+    - dims: A list of dimension names.
+    - coords: A dictionary of coordinates for the DataArray.
+    - chunk_sizes: A dictionary specifying chunk sizes for each dimension.
+
+    Returns:
+    - An xarray.DataArray with assigned coordinates and chunks.
+    """
+    # Create the DataArray
+    dataarray = xr.DataArray(
+        stack_data,
+        dims=dims,
+        coords=coords,
+        name=name
+    )
+
+    # Assign daily floored time to the 'time' coordinate
+    dataarray = dataarray.assign_coords(time=dataarray["time"].dt.floor("D"))
+
+    # Chunk the DataArray
+    dataarray = dataarray.chunk(chunk_sizes)
+
+    return dataarray
+
+def verify_dataset(dataset) -> tuple[bool, str]:
     """
     Verifies an xarray.Dataset to ensure:
     1. Dimensions 'south_north' and 'west_east' are equal and both are multiples of 16.
