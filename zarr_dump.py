@@ -3,6 +3,7 @@ import sys
 import xarray as xr
 
 from tread import TREAD_CHANNELS
+from era5 import ERA5_CHANNEL_NUM
 
 def print_slices_over_time(ds, limit=10):
     print("\n" + "-"*40)
@@ -42,10 +43,10 @@ def dump_zarr_fields(zarr_path):
         ("cwb_pressure", len(TREAD_CHANNELS)),
         ("cwb_scale", len(TREAD_CHANNELS)),
         ("cwb_variable", len(TREAD_CHANNELS)),
-        ("era5_center", 21),
-        ("era5_pressure", 21),
-        ("era5_scale", 21),
-        ("era5_variable", 21)
+        ("era5_center", ERA5_CHANNEL_NUM),
+        ("era5_pressure", ERA5_CHANNEL_NUM),
+        ("era5_scale", ERA5_CHANNEL_NUM),
+        ("era5_variable", ERA5_CHANNEL_NUM)
     ]:
         print(f"\n{field_group}:")
         print(group[field_group].info)
