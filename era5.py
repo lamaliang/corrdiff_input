@@ -12,12 +12,14 @@ ERA5_PRS_CHANNELS = {
     "t": "temperature",
     "u": "eastward_wind",
     "v": "northward_wind",
+    "w": "vertical_velocity",
 }
 ERA5_SFC_CHANNELS = {
     "tp" : "precipitation",
     "t2m": "temperature_2m",
     "u10": "eastward_wind_10m",
     "v10": "northward_wind_10m",
+    "msl": "mean_sea_level_pressure",
 }
 ERA5_ORO_CHANNEL = {
     "oro": "terrain_height"
