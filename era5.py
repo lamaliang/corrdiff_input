@@ -29,6 +29,8 @@ ERA5_CHANNELS = [
     {'name': 't', 'pressure': 925, 'variable': 'temperature'},
     {'name': 'u', 'pressure': 925, 'variable': 'eastward_wind'},
     {'name': 'v', 'pressure': 925, 'variable': 'northward_wind'},
+    # 1000
+    {'name': 'q', 'pressure': 1000, 'variable': 'specific_humidity'},
     # Remaining surface channels
     {'name': 't2m', 'variable': 'temperature_2m'},
     {'name': 'u10', 'variable': 'eastward_wind_10m'},
