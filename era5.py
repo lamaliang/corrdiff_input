@@ -7,6 +7,23 @@ import xarray as xr
 from util import regrid_dataset, create_and_process_dataarray, is_local_testing
 
 PRESSURE_LEVELS = [500, 700, 850, 925]
+ERA5_PRS_CHANNELS = {
+    "z": "geopotential_height",
+    "t": "temperature",
+    "u": "eastward_wind",
+    "v": "northward_wind",
+}
+ERA5_SFC_CHANNELS = {
+    "tp" : "precipitation",
+    "t2m": "temperature_2m",
+    "u10": "eastward_wind_10m",
+    "v10": "northward_wind_10m",
+}
+ERA5_ORO_CHANNEL = {
+    "oro": "terrain_height"
+}
+ERA5_CHANNEL_NUM = \
+    len(ERA5_PRS_CHANNELS) * len(PRESSURE_LEVELS) + len(ERA5_SFC_CHANNELS) + len(ERA5_ORO_CHANNEL)
 
 def get_prs_paths(folder, subfolder, variables, start_date, end_date):
     date_range = pd.date_range(start=start_date, end=end_date, freq="MS").strftime("%Y%m").tolist()
@@ -41,8 +58,8 @@ def get_sfc_paths(folder, subfolder, variables, start_date, end_date):
     ]
 
 def get_era5_dataset(dir, grid, start_date, end_date):
-    pressure_level_vars = ['z', 't', 'u', 'v']
-    surface_vars = ['tp', 't2m', 'u10', 'v10']
+    pressure_level_vars = list(ERA5_PRS_CHANNELS.keys())
+    surface_vars = list(ERA5_SFC_CHANNELS.keys())
 
     # pressure_level
     duration = slice(str(start_date), str(end_date))
@@ -62,15 +79,9 @@ def get_era5_dataset(dir, grid, start_date, end_date):
 
     # Merge prs, sfc, topo and rename variables.
     era5 = xr.merge([era5_prs, era5_sfc, era5_topo]).rename({
-        "z": "geopotential_height",
-        "t": "temperature",
-        "u": "eastward_wind",
-        "v": "northward_wind",
-        "tp" : "precipitation",
-        "t2m": "temperature_2m",
-        "u10": "eastward_wind_10m",
-        "v10": "northward_wind_10m",
-        "oro": "terrain_height"
+        **ERA5_PRS_CHANNELS,
+        **ERA5_SFC_CHANNELS,
+        **ERA5_ORO_CHANNEL
     })
 
     # Crop to Taiwan domain given ERA5 is global data.
@@ -86,7 +97,9 @@ def get_era5_dataset(dir, grid, start_date, end_date):
 
 def get_era5_pressure(era5_channel):
     era5_pressure_values = np.array(
-        [np.nan] + list(np.repeat(PRESSURE_LEVELS, 4)) + [np.nan] * 4
+        [np.nan] +  # First surface channel ("precipitation")
+        list(np.repeat(PRESSURE_LEVELS, len(ERA5_PRS_CHANNELS))) +  # PRS_CHANNELS repeated for each pressure level
+        [np.nan] * len(ERA5_SFC_CHANNELS)  # Remaining surface channels + Orography channel
     )
     era5_pressure = xr.DataArray(
         da.from_array(era5_pressure_values, chunks=(len(era5_pressure_values))),
@@ -99,8 +112,10 @@ def get_era5_pressure(era5_channel):
 
 def get_era5_variable(era5_channel):
     era5_variables_values = (
-        ['precipitation'] + ['geopotential_height', 'temperature', 'eastward_wind', 'northward_wind'] * 4 +
-        ['temperature_2m', 'eastward_wind_10m', 'northward_wind_10m', 'terrain_height']
+        list(ERA5_SFC_CHANNELS.values())[:1] +  # First surface channel ("precipitation")
+        list(ERA5_PRS_CHANNELS.values()) * len(PRESSURE_LEVELS) +  # PRS_CHANNELS repeated for each pressure level
+        list(ERA5_SFC_CHANNELS.values())[1:] +  # Remaining surface channels
+        list(ERA5_ORO_CHANNEL.values())         # Orography channel
     )
     era5_variable = xr.DataArray(
         data=da.from_array(era5_variables_values, chunks=(len(era5_variables_values))),
@@ -112,7 +127,7 @@ def get_era5_variable(era5_channel):
     return era5_variable, era5_variables_values
 
 def get_era5(era5_out):
-    era5_channel = np.arange(21)
+    era5_channel = np.arange(ERA5_CHANNEL_NUM)
     era5_pressure, era5_pressure_values = get_era5_pressure(era5_channel)
     era5_variable, era5_variables_values = get_era5_variable(era5_channel)
 
