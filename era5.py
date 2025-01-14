@@ -6,26 +6,39 @@ import xarray as xr
 
 from util import regrid_dataset, create_and_process_dataarray, is_local_testing
 
-PRESSURE_LEVELS = [500, 700, 850, 925]
-ERA5_PRS_CHANNELS = {
-    "z": "geopotential_height",
-    "t": "temperature",
-    "u": "eastward_wind",
-    "v": "northward_wind",
-    "w": "vertical_velocity",
-}
-ERA5_SFC_CHANNELS = {
-    "tp" : "precipitation",
-    "t2m": "temperature_2m",
-    "u10": "eastward_wind_10m",
-    "v10": "northward_wind_10m",
-    "msl": "mean_sea_level_pressure",
-}
-ERA5_ORO_CHANNEL = {
-    "oro": "terrain_height"
-}
-ERA5_CHANNEL_NUM = \
-    len(ERA5_PRS_CHANNELS) * len(PRESSURE_LEVELS) + len(ERA5_SFC_CHANNELS) + len(ERA5_ORO_CHANNEL)
+ERA5_CHANNELS = [
+    {'name': 'tp', 'variable': 'precitipation'},
+    # 500
+    {'name': 'z', 'pressure': 500, 'variable': 'geopotential_height'},
+    {'name': 't', 'pressure': 500, 'variable': 'temperature'},
+    {'name': 'u', 'pressure': 500, 'variable': 'eastward_wind'},
+    {'name': 'v', 'pressure': 500, 'variable': 'northward_wind'},
+    # 700
+    {'name': 'z', 'pressure': 700, 'variable': 'geopotential_height'},
+    {'name': 't', 'pressure': 700, 'variable': 'temperature'},
+    {'name': 'u', 'pressure': 700, 'variable': 'eastward_wind'},
+    {'name': 'v', 'pressure': 700, 'variable': 'northward_wind'},
+    # 850
+    {'name': 'z', 'pressure': 850, 'variable': 'geopotential_height'},
+    {'name': 't', 'pressure': 850, 'variable': 'temperature'},
+    {'name': 'u', 'pressure': 850, 'variable': 'eastward_wind'},
+    {'name': 'v', 'pressure': 850, 'variable': 'northward_wind'},
+    {'name': 'w', 'pressure': 850, 'variable': 'vertical_velocity'}, # W for 850 only
+    # 925
+    {'name': 'z', 'pressure': 925, 'variable': 'geopotential_height'},
+    {'name': 't', 'pressure': 925, 'variable': 'temperature'},
+    {'name': 'u', 'pressure': 925, 'variable': 'eastward_wind'},
+    {'name': 'v', 'pressure': 925, 'variable': 'northward_wind'},
+    # 1000
+    {'name': 'q', 'pressure': 1000, 'variable': 'specific_humidity'},
+    # Remaining surface channels
+    {'name': 't2m', 'variable': 'temperature_2m'},
+    {'name': 'u10', 'variable': 'eastward_wind_10m'},
+    {'name': 'v10', 'variable': 'northward_wind_10m'},
+    {'name': 'msl', 'variable': 'mean_sea_level_pressure'},
+    # Orography channel
+    {'name': 'oro', 'variable': 'terrain_height'},
+]
 
 def get_prs_paths(folder, subfolder, variables, start_date, end_date):
     date_range = pd.date_range(start=start_date, end=end_date, freq="MS").strftime("%Y%m").tolist()
@@ -60,30 +73,33 @@ def get_sfc_paths(folder, subfolder, variables, start_date, end_date):
     ]
 
 def get_era5_dataset(dir, grid, start_date, end_date):
-    pressure_level_vars = list(ERA5_PRS_CHANNELS.keys())
-    surface_vars = list(ERA5_SFC_CHANNELS.keys())
+    pressure_levels = sorted({ch['pressure'] for ch in ERA5_CHANNELS if 'pressure' in ch})
+    pressure_level_vars = list(dict.fromkeys(
+        ch['name'] for ch in ERA5_CHANNELS if 'pressure' in ch
+    ))
+    surface_vars = list(dict.fromkeys(
+        ch['name'] for ch in ERA5_CHANNELS if 'pressure' not in ch and ch['name'] not in {'oro'}
+    ))
 
     # pressure_level
     duration = slice(str(start_date), str(end_date))
-    prs_paths = get_prs_paths(dir, "day", pressure_level_vars, start_date, end_date)
-    era5_prs = xr.open_mfdataset(prs_paths, combine='by_coords').sel(level=PRESSURE_LEVELS, time=duration)
+    prs_paths = get_prs_paths(dir, 'day', pressure_level_vars, start_date, end_date)
+    era5_prs = xr.open_mfdataset(prs_paths, combine='by_coords').sel(level=pressure_levels, time=duration)
 
     # surface
-    sfc_paths = get_sfc_paths(dir, "day", surface_vars, start_date, end_date)
+    sfc_paths = get_sfc_paths(dir, 'day', surface_vars, start_date, end_date)
     era5_sfc = xr.open_mfdataset(sfc_paths, combine='by_coords').sel(time=duration)
     era5_sfc['tp'] = era5_sfc['tp'] * 24 * 1000
     era5_sfc['tp'].attrs['units'] = 'mm/day' # Convert unit
 
     # orography
-    era5_topo = xr.open_mfdataset(dir + "/ERA5_oro_r1440x721.nc")[['oro']]
+    era5_topo = xr.open_mfdataset(dir + '/ERA5_oro_r1440x721.nc')[['oro']]
     era5_topo = era5_topo.expand_dims(time=era5_sfc.time)
     era5_topo = era5_topo.reindex(time=era5_sfc.time)
 
     # Merge prs, sfc, topo and rename variables.
     era5 = xr.merge([era5_prs, era5_sfc, era5_topo]).rename({
-        **ERA5_PRS_CHANNELS,
-        **ERA5_SFC_CHANNELS,
-        **ERA5_ORO_CHANNEL
+        ch['name']: ch['variable'] for ch in ERA5_CHANNELS
     })
 
     # Crop to Taiwan domain given ERA5 is global data.
@@ -97,47 +113,22 @@ def get_era5_dataset(dir, grid, start_date, end_date):
 
     return era5_crop, era5_out
 
-def get_era5_pressure(era5_channel):
-    era5_pressure_values = np.array(
-        [np.nan] +  # First surface channel ("precipitation")
-        list(np.repeat(PRESSURE_LEVELS, len(ERA5_PRS_CHANNELS))) +  # PRS_CHANNELS repeated for each pressure level
-        [np.nan] * len(ERA5_SFC_CHANNELS)  # Remaining surface channels + Orography channel
-    )
-    era5_pressure = xr.DataArray(
-        da.from_array(era5_pressure_values, chunks=(len(era5_pressure_values))),
-        dims=["era5_channel"],
-        coords={ "era5_channel": era5_channel },
-        name="era5_pressure"
-    )
-
-    return era5_pressure, era5_pressure_values
-
-def get_era5_variable(era5_channel):
-    era5_variables_values = (
-        list(ERA5_SFC_CHANNELS.values())[:1] +  # First surface channel ("precipitation")
-        list(ERA5_PRS_CHANNELS.values()) * len(PRESSURE_LEVELS) +  # PRS_CHANNELS repeated for each pressure level
-        list(ERA5_SFC_CHANNELS.values())[1:] +  # Remaining surface channels
-        list(ERA5_ORO_CHANNEL.values())         # Orography channel
-    )
-    era5_variable = xr.DataArray(
-        data=da.from_array(era5_variables_values, chunks=(len(era5_variables_values))),
-        dims=["era5_channel"],
-        coords={ "era5_channel": era5_channel },
-        name="era5_variable"
-    )
-
-    return era5_variable, era5_variables_values
-
 def get_era5(era5_out):
-    era5_channel = np.arange(ERA5_CHANNEL_NUM)
-    era5_pressure, era5_pressure_values = get_era5_pressure(era5_channel)
-    era5_variable, era5_variables_values = get_era5_variable(era5_channel)
+    era5_channel = np.arange(len(ERA5_CHANNELS))
+    era5_pressure = [ch.get('pressure', np.nan) for ch in ERA5_CHANNELS]
+
+    # Create channel coordinates
+    channel_coords = dict(
+        era5_variable=xr.Variable(["era5_channel"], [ch.get('variable') for ch in ERA5_CHANNELS]),
+        era5_pressure=xr.Variable(["era5_channel"], era5_pressure),
+    )
 
     # Create ERA5 DataArray
     stack_era5 = da.stack(
         [
-            era5_out[var].sel(level=plev).data if "level" in era5_out[var].dims else era5_out[var].data
-            for var, plev in zip(era5_variables_values, era5_pressure_values)
+            era5_out[ch['variable']].sel(level=ch['pressure']).data
+            if 'pressure' in ch else era5_out[ch['variable']].data
+            for ch in ERA5_CHANNELS
         ],
         axis=1
     )
@@ -149,8 +140,7 @@ def get_era5(era5_out):
         "west_east": era5_out["west_east"],
         "XLAT": era5_out["XLAT"],
         "XLONG": era5_out["XLONG"],
-        "era5_pressure": era5_pressure,
-        "era5_variable": era5_variable,
+        **channel_coords,
     }
     era5_chunk_sizes = {
         "time": 1,
