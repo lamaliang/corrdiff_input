@@ -2,9 +2,6 @@ import zarr
 import sys
 import xarray as xr
 
-from tread import TREAD_CHANNELS
-from era5 import ERA5_CHANNELS
-
 def print_slices_over_time(ds, limit=10):
     print("\n" + "-"*40)
 
@@ -32,6 +29,8 @@ def dump_zarr_fields(zarr_path):
     """
     # Open the Zarr file in consolidated mode
     group = zarr.open_consolidated(zarr_path)
+    num_cwb_channels = len(group['cwb_variable'])
+    num_era5_channels = len(group['era5_variable'])
 
     print("Zarr Group Tree Structure:")
     print(group.tree())
@@ -39,14 +38,14 @@ def dump_zarr_fields(zarr_path):
 
     # Iterate over the specified folders and dump the content
     for field_group, count in [
-        ("cwb_center", len(TREAD_CHANNELS)),
-        ("cwb_pressure", len(TREAD_CHANNELS)),
-        ("cwb_scale", len(TREAD_CHANNELS)),
-        ("cwb_variable", len(TREAD_CHANNELS)),
-        ("era5_center", len(ERA5_CHANNELS)),
-        ("era5_pressure", len(ERA5_CHANNELS)),
-        ("era5_scale", len(ERA5_CHANNELS)),
-        ("era5_variable", len(ERA5_CHANNELS))
+        ("cwb_center", num_cwb_channels),
+        ("cwb_pressure", num_cwb_channels),
+        ("cwb_scale", num_cwb_channels),
+        ("cwb_variable", num_cwb_channels),
+        ("era5_center", num_era5_channels),
+        ("era5_pressure", num_era5_channels),
+        ("era5_scale", num_era5_channels),
+        ("era5_variable", num_era5_channels)
     ]:
         print(f"\n{field_group}:")
         print(group[field_group].info)
