@@ -18,7 +18,8 @@ Features:
 Functions:
 - `generate_output_dataset`: Combines processed TReAD and ERA5 data into a consolidated dataset.
 - `write_to_zarr`: Writes the consolidated dataset to Zarr format with compression.
-- `get_data_path`: Determines the paths for TReAD and ERA5 datasets based on the environment.
+- `get_data_dir`: Determines the paths for TReAD and ERA5 datasets based on the environment.
+- `get_ref_grid`: Loads the reference grid dataset and extracts the required coordinates.
 - `generate_corrdiff_zarr`: Orchestrates the generation, verification, and saving of the dataset.
 - `main`: Parses command-line arguments and triggers the dataset generation process.
 
@@ -54,6 +55,7 @@ from tread import generate_tread_output
 from era5 import generate_era5_output
 from util import is_local_testing, verify_dataset, dump_regrid_netcdf
 
+DEBUG = False  # Set to True to enable debugging
 CORRDIFF_GRID_COORD_KEYS = ["XLAT", "XLONG"]
 REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
 
@@ -61,7 +63,32 @@ REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
 # Functions
 ##
 
-def generate_output_dataset(tread_file, era5_dir, grid, grid_coords, start_date, end_date):
+def get_ref_grid():
+    """
+    Retrieves the reference grid dataset and its coordinates.
+
+    This function opens a predefined reference grid NetCDF file and extracts the latitude and
+    longitude grid as a new xarray.Dataset. It also extracts specific coordinate keys from the
+    reference dataset for use in downstream processing.
+
+    Returns:
+        tuple:
+            - grid (xarray.Dataset): A dataset containing the latitude ('lat') and
+              longitude ('lon') grids.
+            - grid_coords (dict): A dictionary of extracted coordinate arrays
+              specified by `CORRDIFF_GRID_COORD_KEYS`.
+
+    Notes:
+        - The reference grid file path is defined by the global constant `REF_GRID_NC`.
+        - The coordinate keys to extract are defined in `CORRDIFF_GRID_COORD_KEYS`.
+    """
+    ref = xr.open_dataset(REF_GRID_NC, engine='netcdf4')
+    grid = xr.Dataset({ "lat": ref.XLAT, "lon": ref.XLONG })
+    grid_coords = { key: ref.coords[key] for key in CORRDIFF_GRID_COORD_KEYS }
+
+    return grid, grid_coords
+
+def generate_output_dataset(tread_dir, era5_dir, start_date, end_date):
     """
     Generates a consolidated output dataset by processing TReAD and ERA5 data fields.
 
@@ -76,45 +103,63 @@ def generate_output_dataset(tread_file, era5_dir, grid, grid_coords, start_date,
     Returns:
         xr.Dataset: A dataset containing consolidated and processed TReAD and ERA5 data fields.
     """
-    # Generate CWB (i.e., TReAD) and ERA5 output fields.
-    cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid, cwb_pre_regrid, cwb_post_regrid = \
-        generate_tread_output(tread_file, grid, start_date, end_date)
-    era5, era5_center, era5_scale, era5_valid, era5_pre_regrid, era5_post_regrid = \
-        generate_era5_output(era5_dir, grid, start_date, end_date)
+    # Get REF grid
+    grid, grid_coords = get_ref_grid()
 
-    # Copy coordinates and remove XTIME if present
-    coords = {
-        key: value.drop_vars("XTIME") if "XTIME" in getattr(value, "coords", {}) else value
-        for key, value in grid_coords.items()
+    # Generate CWB (TReAD) and ERA5 output fields
+    tread_outputs = generate_tread_output(tread_dir, grid, start_date, end_date)
+    era5_outputs = generate_era5_output(era5_dir, grid, start_date, end_date)
+
+    # Group outputs into dictionaries
+    tread_data = {
+        "cwb": tread_outputs[0],
+        "cwb_variable": tread_outputs[1],
+        "cwb_center": tread_outputs[2],
+        "cwb_scale": tread_outputs[3],
+        "cwb_valid": tread_outputs[4],
+        "pre_regrid": tread_outputs[5],
+        "post_regrid": tread_outputs[6],
+    }
+    era5_data = {
+        "era5": era5_outputs[0],
+        "era5_center": era5_outputs[1],
+        "era5_scale": era5_outputs[2],
+        "era5_valid": era5_outputs[3],
+        "pre_regrid": era5_outputs[4],
+        "post_regrid": era5_outputs[5],
     }
 
     # Create the output dataset
     out = xr.Dataset(
         coords={
-            **{key: coords[key] for key in CORRDIFF_GRID_COORD_KEYS},
-            "XTIME": np.datetime64("2025-01-07 17:00:00", "ns"),  # Placeholder for timestamp
-            "time": cwb.time,
-            "cwb_variable": cwb_variable,
-            "era5_scale": ("era5_channel", era5_scale.data)
+            **{key: grid_coords[key] for key in CORRDIFF_GRID_COORD_KEYS},
+            "XTIME": np.datetime64("2025-01-15 18:00:00", "ns"),  # Placeholder for timestamp
+            "time": tread_data["cwb"].time,
+            "cwb_variable": tread_data["cwb_variable"],
+            "era5_scale": ("era5_channel", era5_data["era5_scale"].data),
         }
     )
 
     # Assign CWB and ERA5 data variables
     out = out.assign({
-        "cwb": cwb,
-        "cwb_center": cwb_center,
-        "cwb_scale": cwb_scale,
-        "cwb_valid": cwb_valid,
-        "era5": era5,
-        "era5_center": era5_center,
-        "era5_valid": era5_valid
-    })
+        "cwb": tread_data["cwb"],
+        "cwb_center": tread_data["cwb_center"],
+        "cwb_scale": tread_data["cwb_scale"],
+        "cwb_valid": tread_data["cwb_valid"],
+        "era5": era5_data["era5"],
+        "era5_center": era5_data["era5_center"],
+        "era5_valid": era5_data["era5_valid"],
+    }).drop_vars(["south_north", "west_east", "cwb_channel", "era5_channel"])
 
-    out = out.drop_vars(["south_north", "west_east", "cwb_channel", "era5_channel"])
-
-    # [DEBUG] Dump data pre- & post-regridding, and print output data slices.
-    # dump_regrid_netcdf(f"{start_date}_{end_date}", \
-    #     cwb_pre_regrid, cwb_post_regrid, era5_pre_regrid, era5_post_regrid)
+    # [DEBUG] Dump data pre- & post-regridding, and print output data slices
+    if DEBUG:
+        dump_regrid_netcdf(
+            f"{start_date}_{end_date}",
+            tread_data["pre_regrid"],
+            tread_data["post_regrid"],
+            era5_data["pre_regrid"],
+            era5_data["post_regrid"],
+        )
 
     return out
 
@@ -138,25 +183,25 @@ def write_to_zarr(out_path, out_ds):
 
     print(f"Data successfully saved to [{out_path}]")
 
-def get_data_path():
+def get_data_dir():
     """
-    Determines the data paths for TReAD and ERA5 datasets based on the environment.
+    Determines the base directories for TReAD and ERA5 datasets based on the execution environment.
 
     Returns:
-        dict: A dictionary containing paths to TReAD and ERA5 data directories.
-    """
-    # LOCAL
-    if is_local_testing():
-        return {
-            "tread_dir": "./data/tread",
-            "era5_dir": "./data/era5",
-        }
+        tuple:
+            - str: The path to the TReAD data directory.
+            - str: The path to the ERA5 data directory.
 
-    # REMOTE
-    return {
-        "tread_dir": "/lfs/archive/TCCIP_data/TReAD/SFC/hr",
-        "era5_dir": "/lfs/archive/Reanalysis/ERA5",
-    }
+    Notes:
+        - In local testing environments (determined by `is_local_testing()`), the paths are set to
+          `./data/tread` and `./data/era5`.
+        - In production environments, the paths point to remote directories:
+          `/lfs/archive/TCCIP_data/TReAD/SFC/hr` for TReAD and
+          `/lfs/archive/Reanalysis/ERA5` for ERA5.
+    """
+    if is_local_testing():
+        return "./data/tread", "./data/era5"
+    return "/lfs/archive/TCCIP_data/TReAD/SFC/hr", "/lfs/archive/Reanalysis/ERA5"
 
 def generate_corrdiff_zarr(start_date, end_date):
     """
@@ -170,17 +215,10 @@ def generate_corrdiff_zarr(start_date, end_date):
     Returns:
         None
     """
-    data_path = get_data_path()
-
-    # Extract REF grid.
-    ref = xr.open_dataset(REF_GRID_NC, engine='netcdf4')
-    grid = xr.Dataset({ "lat": ref.XLAT, "lon": ref.XLONG })
-    grid_coords = { key: ref.coords[key] for key in CORRDIFF_GRID_COORD_KEYS }
+    tread_dir, era5_dir = get_data_dir()
 
     # Generate the output dataset.
-    out = generate_output_dataset( \
-            data_path["tread_dir"], data_path["era5_dir"], \
-            grid, grid_coords, start_date, end_date)
+    out = generate_output_dataset(tread_dir, era5_dir, start_date, end_date)
     print(f"\nZARR dataset =>\n {out}")
 
     # Verify the output dataset.

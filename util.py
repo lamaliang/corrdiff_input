@@ -149,15 +149,15 @@ def verify_dataset(dataset) -> tuple[bool, str]:
     # All checks passed
     return True, "Dataset verification passed successfully."
 
-def dump_regrid_netcdf(subdir, cwb_pre_regrid, cwb_post_regrid, \
+def dump_regrid_netcdf(subdir, tread_pre_regrid, tread_post_regrid, \
                        era5_pre_regrid, era5_post_regrid) -> None:
     """
     Saves the provided datasets to NetCDF files within a specified subdirectory.
 
     Parameters:
     subdir (str): The subdirectory path where the NetCDF files will be saved.
-    cwb_pre_regrid (xr.Dataset): The CWB dataset before regridding.
-    cwb_post_regrid (xr.Dataset): The CWB dataset after regridding.
+    tread_pre_regrid (xr.Dataset): The TReAD dataset before regridding.
+    tread_post_regrid (xr.Dataset): The TReAD dataset after regridding.
     era5_pre_regrid (xr.Dataset): The ERA5 dataset before regridding.
     era5_post_regrid (xr.Dataset): The ERA5 dataset after regridding.
 
@@ -167,8 +167,8 @@ def dump_regrid_netcdf(subdir, cwb_pre_regrid, cwb_post_regrid, \
     folder = f"./nc_dump/{subdir}/"
     os.makedirs(folder, exist_ok=True)
 
-    cwb_pre_regrid.to_netcdf(folder + "tread_pre_regrid.nc")
-    cwb_post_regrid.to_netcdf(folder + "tread_post_regrid.nc")
+    tread_pre_regrid.to_netcdf(folder + "tread_pre_regrid.nc")
+    tread_post_regrid.to_netcdf(folder + "tread_post_regrid.nc")
     era5_pre_regrid.to_netcdf(folder + "era5_pre_regrid.nc")
     era5_post_regrid.to_netcdf(folder + "era5_post_regrid.nc")
 

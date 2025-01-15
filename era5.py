@@ -16,11 +16,14 @@ Features:
 Functions:
 - get_prs_paths: Generate file paths for ERA5 pressure-level data.
 - get_sfc_paths: Generate file paths for ERA5 surface data.
-- get_era5_dataset: Retrieve and preprocess ERA5 datasets, including regridding.
+- get_pressure_level_data: Retrieve and preprocess ERA5 pressure-level data.
+- get_surface_data: Retrieve and preprocess ERA5 surface data.
+- get_orography_data: Retrieve and preprocess ERA5 orography data.
+- get_era5_dataset: Retrieve and preprocess ERA5 datasets, including regridding and merging.
 - get_era5: Create a consolidated DataArray of ERA5 variables across channels.
 - get_era5_center: Compute mean values for ERA5 variables over time and spatial dimensions.
-- get_era5_scale: Compute standard deviation values for ERA5 variables over
-                  time and spatial dimensions.
+- get_era5_scale: Compute standard deviation values for ERA5 variables over time and
+                  spatial dimensions.
 - get_era5_valid: Generate validity masks for ERA5 variables over time.
 - generate_era5_output: Produce consolidated ERA5 outputs, including intermediate and
                         aggregated datasets.
@@ -152,6 +155,67 @@ def get_sfc_paths(folder, subfolder, variables, start_date, end_date):
         for var in variables for yyyymm in date_range
     ]
 
+def get_pressure_level_data(folder, duration):
+    """
+    Retrieve and process pressure level data from ERA5 files.
+
+    Parameters:
+        folder (str): Base directory containing ERA5 pressure level data files.
+        pressure_level_vars (list): List of variable names for pressure levels.
+        pressure_levels (list): Sorted list of pressure levels to extract.
+        duration (slice): Time slice for the desired data range.
+
+    Returns:
+        xarray.Dataset: Processed pressure level data.
+    """
+    pressure_levels = sorted({ch['pressure'] for ch in ERA5_CHANNELS if 'pressure' in ch})
+    pressure_level_vars = list(dict.fromkeys(
+        ch['name'] for ch in ERA5_CHANNELS if 'pressure' in ch
+    ))
+
+    prs_paths = get_prs_paths(folder, 'day', pressure_level_vars, duration.start, duration.stop)
+    return xr.open_mfdataset(prs_paths, combine='by_coords') \
+            .sel(level=pressure_levels, time=duration)
+
+
+def get_surface_data(folder, duration):
+    """
+    Retrieve and process surface data from ERA5 files.
+
+    Parameters:
+        folder (str): Base directory containing ERA5 surface data files.
+        surface_vars (list): List of variable names for surface data.
+        duration (slice): Time slice for the desired data range.
+
+    Returns:
+        xarray.Dataset: Processed surface data.
+    """
+    surface_vars = list(dict.fromkeys(
+        ch['name'] for ch in ERA5_CHANNELS if 'pressure' not in ch and ch['name'] not in {'oro'}
+    ))
+
+    sfc_paths = get_sfc_paths(folder, 'day', surface_vars, duration.start, duration.stop)
+    sfc_data = xr.open_mfdataset(sfc_paths, combine='by_coords').sel(time=duration)
+    sfc_data['tp'] = sfc_data['tp'] * 24 * 1000  # Convert unit to mm/day
+    sfc_data['tp'].attrs['units'] = 'mm/day'
+    return sfc_data
+
+
+def get_orography_data(folder, time_coord):
+    """
+    Retrieve and process orography data from ERA5 files.
+
+    Parameters:
+        folder (str): Base directory containing ERA5 orography data files.
+        time_coord (xarray.DataArray): Time coordinate to align with.
+
+    Returns:
+        xarray.Dataset: Processed orography data.
+    """
+    topo = xr.open_mfdataset(folder + '/ERA5_oro_r1440x721.nc')[['oro']]
+    topo = topo.expand_dims(time=time_coord)
+    return topo.reindex(time=time_coord)
+
 def get_era5_dataset(folder, grid, start_date, end_date):
     """
     Retrieve and process ERA5 datasets for specified variables and date range,
@@ -169,30 +233,12 @@ def get_era5_dataset(folder, grid, start_date, end_date):
                               of the reference grid.
             - xarray.Dataset: The regridded ERA5 dataset aligned with the reference grid.
     """
-    pressure_levels = sorted({ch['pressure'] for ch in ERA5_CHANNELS if 'pressure' in ch})
-    pressure_level_vars = list(dict.fromkeys(
-        ch['name'] for ch in ERA5_CHANNELS if 'pressure' in ch
-    ))
-    surface_vars = list(dict.fromkeys(
-        ch['name'] for ch in ERA5_CHANNELS if 'pressure' not in ch and ch['name'] not in {'oro'}
-    ))
-
-    # pressure_level
     duration = slice(str(start_date), str(end_date))
-    prs_paths = get_prs_paths(folder, 'day', pressure_level_vars, start_date, end_date)
-    era5_prs = xr.open_mfdataset(prs_paths, combine='by_coords') \
-                .sel(level=pressure_levels, time=duration)
 
-    # surface
-    sfc_paths = get_sfc_paths(folder, 'day', surface_vars, start_date, end_date)
-    era5_sfc = xr.open_mfdataset(sfc_paths, combine='by_coords').sel(time=duration)
-    era5_sfc['tp'] = era5_sfc['tp'] * 24 * 1000
-    era5_sfc['tp'].attrs['units'] = 'mm/day' # Convert unit
-
-    # orography
-    era5_topo = xr.open_mfdataset(folder + '/ERA5_oro_r1440x721.nc')[['oro']]
-    era5_topo = era5_topo.expand_dims(time=era5_sfc.time)
-    era5_topo = era5_topo.reindex(time=era5_sfc.time)
+    # Process pressure levels, surface data, and orography data
+    era5_prs = get_pressure_level_data(folder, duration)
+    era5_sfc = get_surface_data(folder, duration)
+    era5_topo = get_orography_data(folder, era5_sfc.time)
 
     # Merge prs, sfc, topo and rename variables.
     era5 = xr.merge([era5_prs, era5_sfc, era5_topo]).rename({
@@ -257,8 +303,8 @@ def get_era5(era5_out):
         "west_east": era5_out["west_east"].size,
     }
 
-    return create_and_process_dataarray("era5", stack_era5, era5_dims, \
-                                        era5_coords, era5_chunk_sizes)
+    return create_and_process_dataarray(
+        "era5", stack_era5, era5_dims, era5_coords, era5_chunk_sizes)
 
 def get_era5_center(era5):
     """
