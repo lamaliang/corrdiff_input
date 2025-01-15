@@ -1,11 +1,63 @@
+"""
+Utility functions for dataset processing and analysis.
+
+This module provides a collection of utility functions for tasks such as:
+- Regridding datasets to match a target grid using bilinear interpolation.
+- Creating and processing xarray DataArrays with specified dimensions, coordinates, and chunk sizes.
+- Verifying datasets to ensure compliance with required dimensions, coordinates, and variables.
+- Saving datasets to NetCDF format for debugging and storage.
+- Determining the execution environment (local testing or production).
+
+Functions:
+- regrid_dataset: Regrids an xarray dataset to align with a target grid.
+- create_and_process_dataarray: Creates and processes xarray.DataArray with specified parameters.
+- verify_dataset: Verifies that a dataset meets required structure and properties.
+- dump_regrid_netcdf: Saves regridded datasets to NetCDF files in a specified directory.
+- is_local_testing: Checks whether the environment is set up for local testing.
+
+Dependencies:
+- `os`: For file and directory operations.
+- `xesmf`: For regridding datasets.
+- `xarray`: For handling labeled multi-dimensional arrays.
+
+Example Usage:
+    from util import regrid_dataset, create_and_process_dataarray
+
+    # Regrid a dataset to match a target grid
+    regridded_ds = regrid_dataset(source_dataset, target_grid)
+
+    # Create and process a DataArray
+    dataarray = create_and_process_dataarray(
+        name="example_dataarray",
+        stack_data=stacked_data,
+        dims=["time", "lat", "lon"],
+        coords={"time": time_values, "lat": lat_values, "lon": lon_values},
+        chunk_sizes={"time": 1, "lat": 100, "lon": 100}
+    )
+
+    # Verify dataset structure
+    is_valid, message = verify_dataset(dataset)
+    print(message)
+"""
 import os
 import xesmf as xe
 import xarray as xr
 
 def regrid_dataset(ds, grid) -> xr.Dataset:
+    """
+    Regrids the input dataset to match the target grid using bilinear interpolation.
+
+    Parameters:
+    ds (xr.Dataset): The source dataset to be regridded.
+    grid (xr.Dataset): The target grid dataset defining the desired spatial dimensions.
+
+    Returns:
+    xr.Dataset: The regridded dataset aligned with the target grid.
+    """
     # Regrid the dataset to the target grid:
     # - Use bilinear interpolation to regrid the data.
-    # - Extrapolate by using the nearest valid source cell to extrapolate values for target points outside the source grid.
+    # - Extrapolate by using the nearest valid source cell to extrapolate values for
+    #   target points outside the source grid.
     remap = xe.Regridder(ds, grid, method="bilinear", extrap_method="nearest_s2d")
 
     # Regrid each time step while keeping the original coordinates and dimensions
@@ -19,7 +71,8 @@ def regrid_dataset(ds, grid) -> xr.Dataset:
 
 def create_and_process_dataarray(name, stack_data, dims, coords, chunk_sizes) -> xr.DataArray:
     """
-    Creates and processes an xarray.DataArray with specified dimensions, coordinates, and chunk sizes.
+    Creates and processes an xarray.DataArray with specified
+    dimensions, coordinates, and chunk sizes.
 
     Parameters:
     - name: Name of the DataArray.
@@ -96,14 +149,34 @@ def verify_dataset(dataset) -> tuple[bool, str]:
     # All checks passed
     return True, "Dataset verification passed successfully."
 
-def dump_regrid_netcdf(subdir, cwb_pre_regrid, cwb_post_regrid, era5_pre_regrid, era5_post_regrid) -> None:
+def dump_regrid_netcdf(subdir, tread_pre_regrid, tread_post_regrid, \
+                       era5_pre_regrid, era5_post_regrid) -> None:
+    """
+    Saves the provided datasets to NetCDF files within a specified subdirectory.
+
+    Parameters:
+    subdir (str): The subdirectory path where the NetCDF files will be saved.
+    tread_pre_regrid (xr.Dataset): The TReAD dataset before regridding.
+    tread_post_regrid (xr.Dataset): The TReAD dataset after regridding.
+    era5_pre_regrid (xr.Dataset): The ERA5 dataset before regridding.
+    era5_post_regrid (xr.Dataset): The ERA5 dataset after regridding.
+
+    Returns:
+    None
+    """
     folder = f"./nc_dump/{subdir}/"
     os.makedirs(folder, exist_ok=True)
 
-    cwb_pre_regrid.to_netcdf(folder + "tread_pre_regrid.nc")
-    cwb_post_regrid.to_netcdf(folder + "tread_post_regrid.nc")
+    tread_pre_regrid.to_netcdf(folder + "tread_pre_regrid.nc")
+    tread_post_regrid.to_netcdf(folder + "tread_post_regrid.nc")
     era5_pre_regrid.to_netcdf(folder + "era5_pre_regrid.nc")
     era5_post_regrid.to_netcdf(folder + "era5_post_regrid.nc")
 
 def is_local_testing() -> bool:
+    """
+    Determines if the current environment is set up for local testing.
+
+    Returns:
+    bool: True if the environment is for local testing; False otherwise.
+    """
     return not os.path.exists("/lfs/archive/Reanalysis/")
