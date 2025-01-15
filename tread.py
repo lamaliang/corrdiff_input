@@ -1,3 +1,54 @@
+"""
+TReAD Dataset Processing Module.
+
+This module provides utilities for processing TReAD (Taiwan ReAnalysis Dataset) data.
+It includes functions to retrieve, preprocess, and regrid datasets, as well as to generate
+data arrays and compute various metrics such as mean, standard deviation, and validity.
+
+Features:
+- Retrieve and process TReAD datasets for specific date ranges.
+- Regrid datasets to match a specified spatial grid.
+- Generate CWB-related DataArrays (e.g., pressure levels, variables, mean, and standard deviation).
+- Support for calculating aggregated metrics over time and spatial dimensions.
+
+Functions:
+- get_file_paths: Generate file paths for TReAD datasets based on a date range.
+- get_tread_dataset: Retrieve and preprocess TReAD datasets, including regridding.
+- get_cwb_pressure: Create a DataArray for CWB pressure levels.
+- get_cwb_variable: Create a DataArray for CWB variables.
+- get_cwb: Generate a stacked CWB DataArray from TReAD output variables.
+- get_cwb_center: Compute mean values for CWB variables over time and spatial dimensions.
+- get_cwb_scale: Compute standard deviation for CWB variables over time and spatial dimensions.
+- get_cwb_valid: Generate a validity mask for CWB time steps.
+- generate_tread_output: Produce processed TReAD outputs and associated metrics.
+
+Dependencies:
+- `os`: For file path manipulation.
+- `dask.array`: For efficient handling of large datasets with lazy evaluation.
+- `numpy`: For numerical operations.
+- `pandas`: For handling date ranges and date-time operations.
+- `xarray`: For managing multi-dimensional labeled datasets.
+
+Usage Example:
+    from tread import generate_tread_output
+
+    # Define inputs
+    file_path = "path/to/tread/data"
+    ref_grid = xr.open_dataset("path/to/ref_grid.nc")
+    start_date = "20220101"
+    end_date = "20220131"
+
+    # Generate TReAD outputs
+    cwb, cwb_variable, cwb_center, cwb_scale, cwb_valid, pre_regrid, regridded = \
+        generate_tread_output(file_path, ref_grid, start_date, end_date)
+
+    print("Processed TReAD data:", regridded)
+
+Notes:
+- Ensure that the input datasets conform to expected variable names and coordinate structures.
+- The module is optimized for handling large datasets efficiently using Dask.
+
+"""
 import os
 import dask.array as da
 import numpy as np
@@ -26,6 +77,17 @@ TREAD_CHANNELS = {
 }
 
 def get_file_paths(folder, start_date, end_date):
+    """
+    Generate a list of file paths for the specified date range.
+
+    Parameters:
+        folder (str): The directory containing the files.
+        start_date (str): The start date in 'YYYYMMDD' format.
+        end_date (str): The end date in 'YYYYMMDD' format.
+
+    Returns:
+        list: A list of file paths corresponding to each month in the date range.
+    """
     date_range = pd.date_range(start=start_date, end=end_date, freq="MS").strftime("%Y%m").tolist()
     return [
         os.path.join(folder, f"wrfo2D_d02_{yyyymm}.nc")
@@ -33,6 +95,18 @@ def get_file_paths(folder, start_date, end_date):
     ]
 
 def get_tread_dataset(file, grid, start_date, end_date):
+    """
+    Retrieve and process TReAD dataset within the specified date range.
+
+    Parameters:
+        file (str): The file path or directory containing the dataset.
+        grid (xarray.Dataset): The reference grid for regridding.
+        start_date (str): The start date in 'YYYYMMDD' format.
+        end_date (str): The end date in 'YYYYMMDD' format.
+
+    Returns:
+        tuple: A tuple containing the original and regridded TReAD datasets.
+    """
     channel_keys_original = list(TREAD_CHANNELS_ORIGINAL.keys())
     surface_vars = ['RAINC', 'RAINNC'] + channel_keys_original
 
@@ -65,6 +139,15 @@ def get_tread_dataset(file, grid, start_date, end_date):
     return tread, tread_out
 
 def get_cwb_pressure(cwb_channel):
+    """
+    Create a DataArray for CWB pressure levels.
+
+    Parameters:
+        cwb_channel (array-like): Array of CWB channel indices.
+
+    Returns:
+        xarray.DataArray: DataArray representing CWB pressure levels.
+    """
     return xr.DataArray(
         data=da.from_array(
             [np.nan] * len(TREAD_CHANNELS),
@@ -76,6 +159,16 @@ def get_cwb_pressure(cwb_channel):
     )
 
 def get_cwb_variable(cwb_var_names, cwb_pressure):
+    """
+    Create a DataArray for CWB variable names.
+
+    Parameters:
+        cwb_var_names (array-like): Array of CWB variable names.
+        cwb_pressure (xarray.DataArray): DataArray of CWB pressure levels.
+
+    Returns:
+        xarray.DataArray: DataArray representing CWB variables.
+    """
     cwb_vars_dask = da.from_array(cwb_var_names, chunks=(len(TREAD_CHANNELS),))
     return xr.DataArray(
         cwb_vars_dask,
@@ -85,6 +178,19 @@ def get_cwb_variable(cwb_var_names, cwb_pressure):
     )
 
 def get_cwb(tread_out, cwb_var_names, cwb_channel, cwb_pressure, cwb_variable):
+    """
+    Generate the CWB DataArray by stacking TReAD output variables.
+
+    Parameters:
+        tread_out (xarray.Dataset): The regridded TReAD dataset.
+        cwb_var_names (array-like): Array of CWB variable names.
+        cwb_channel (array-like): Array of CWB channel indices.
+        cwb_pressure (xarray.DataArray): DataArray of CWB pressure levels.
+        cwb_variable (xarray.DataArray): DataArray of CWB variables.
+
+    Returns:
+        xarray.DataArray: The processed CWB DataArray.
+    """
     stack_tread = da.stack([tread_out[var].data for var in cwb_var_names], axis=1)
     cwb_dims = ["time", "cwb_channel", "south_north", "west_east"]
     cwb_coords = {
@@ -107,8 +213,22 @@ def get_cwb(tread_out, cwb_var_names, cwb_channel, cwb_pressure, cwb_variable):
     return create_and_process_dataarray("cwb", stack_tread, cwb_dims, cwb_coords, cwb_chunk_sizes)
 
 def get_cwb_center(tread_out, cwb_pressure, cwb_variable):
+    """
+    Calculate the mean values of specified variables over time and spatial dimensions.
+
+    Parameters:
+        tread_out (xarray.Dataset): The dataset containing the variables.
+        cwb_pressure (xarray.DataArray): DataArray of CWB pressure levels.
+        cwb_variable (xarray.DataArray): DataArray of variable names to calculate the mean for.
+
+    Returns:
+        xarray.DataArray: A DataArray containing the mean values of the specified variables,
+                          with dimensions ['cwb_channel'] and coordinates for 'cwb_pressure'
+                          and 'cwb_variable'.
+    """
     tread_mean = da.stack(
-        [tread_out[var_name].mean(dim=["time", "south_north", "west_east"]).data for var_name in cwb_variable.values],
+        [tread_out[var_name].mean(dim=["time", "south_north", "west_east"]).data
+         for var_name in cwb_variable.values],
         axis=0
     )
 
@@ -123,8 +243,23 @@ def get_cwb_center(tread_out, cwb_pressure, cwb_variable):
     )
 
 def get_cwb_scale(tread_out, cwb_pressure, cwb_variable):
+    """
+    Calculate the standard deviation of specified variables over time and spatial dimensions.
+
+    Parameters:
+        tread_out (xarray.Dataset): The dataset containing the variables.
+        cwb_pressure (xarray.DataArray): DataArray of CWB pressure levels.
+        cwb_variable (xarray.DataArray): DataArray of variable names to calculate the standard
+                                         deviation for.
+
+    Returns:
+        xarray.DataArray: A DataArray containing the standard deviation of the specified variables,
+                          with dimensions ['cwb_channel'] and coordinates for 'cwb_pressure'
+                          and 'cwb_variable'.
+    """
     tread_std = da.stack(
-        [tread_out[var_name].std(dim=["time", "south_north", "west_east"]).data for var_name in cwb_variable.values],
+        [tread_out[var_name].std(dim=["time", "south_north", "west_east"]).data
+         for var_name in cwb_variable.values],
         axis=0
     )
 
@@ -135,11 +270,23 @@ def get_cwb_scale(tread_out, cwb_pressure, cwb_variable):
             "cwb_pressure": cwb_pressure,
             "cwb_variable": cwb_variable
         },
-        name="cwb_center"
+        name="cwb_scale"
     )
 
 def get_cwb_valid(tread_out, cwb):
-    valid = True  
+    """
+    Generate a DataArray indicating the validity of each time step in the dataset.
+
+    Parameters:
+        tread_out (xarray.Dataset): The dataset containing the time dimension.
+        cwb (xarray.DataArray): The CWB DataArray with a 'time' coordinate.
+
+    Returns:
+        xarray.DataArray: A DataArray of boolean values indicating the validity of each time step,
+                          with dimension ['time'] and the same 'time' coordinate as the input
+                          dataset.
+    """
+    valid = True
     return xr.DataArray(
         data=da.from_array(
                 [valid] * len(tread_out["time"]),
@@ -151,22 +298,38 @@ def get_cwb_valid(tread_out, cwb):
     )
 
 def generate_tread_output(file, grid, start_date, end_date):
+    """
+    Generate processed TReAD output datasets and related CWB DataArrays for a specified date range.
+
+    Parameters:
+        file (str): The file path or directory containing the dataset.
+        grid (xarray.Dataset): The reference grid for regridding.
+        start_date (str): The start date in 'YYYYMMDD' format.
+        end_date (str): The end date in 'YYYYMMDD' format.
+
+    Returns:
+        tuple: A tuple containing the following elements:
+            - cwb (xarray.DataArray): The processed CWB DataArray.
+            - cwb_variable (xarray.DataArray): DataArray of CWB variables.
+            - cwb_center (xarray.DataArray): DataArray of mean values for CWB variables.
+            - cwb_scale (xarray.DataArray): DataArray of standard deviations for CWB variables.
+            - cwb_valid (xarray.DataArray): DataArray indicating the validity of each time step.
+            - tread_pre_regrid (xarray.Dataset): The original TReAD dataset before regridding.
+            - tread_out (xarray.Dataset): The regridded TReAD dataset.
+    """
     # Extract TReAD data from file.
     tread_pre_regrid, tread_out = get_tread_dataset(file, grid, start_date, end_date)
     print(f"\nTReAD dataset =>\n {tread_out}")
 
-    ## Prep for generation
-
+    # Prepare for generation
     cwb_channel = np.arange(len(TREAD_CHANNELS))
     cwb_pressure = get_cwb_pressure(cwb_channel)
     # Define variable names and create DataArray for cwb_variable.
     cwb_var_names = np.array(list(tread_out.data_vars.keys()), dtype="<U26")
 
-    ## Generate output fields
-
+    # Generate output fields
     cwb_variable = get_cwb_variable(cwb_var_names, cwb_pressure)
     cwb = get_cwb(tread_out, cwb_var_names, cwb_channel, cwb_pressure, cwb_variable)
-
     cwb_center = get_cwb_center(tread_out, cwb_pressure, cwb_variable)
     cwb_scale = get_cwb_scale(tread_out, cwb_pressure, cwb_variable)
     cwb_valid = get_cwb_valid(tread_out, cwb)

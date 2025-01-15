@@ -1,8 +1,55 @@
-import zarr
+"""
+Zarr Dataset Inspection and Field Dump Utility.
+
+This script provides functionality for inspecting and analyzing the content of Zarr datasets.
+It includes methods to:
+- Print slices of specific fields ('cwb' and 'era5') over time.
+- Dump detailed information about Zarr dataset fields, including their structure and content.
+
+Functions:
+- print_slices_over_time: Prints time-series slices of 'cwb' and 'era5' data from a dataset.
+- dump_zarr_fields: Inspects a Zarr file and prints details of specific fields and their structure.
+- main: Parses the Zarr file path from command-line arguments and triggers the dump process.
+
+Usage:
+    python zarr_dump.py <file_path>
+
+    Example:
+        python zarr_dump.py corrdiff_dataset_20180101_20180103.zarr
+
+Dependencies:
+- `sys`: For command-line argument parsing.
+- `zarr`: For interacting with Zarr datasets.
+- `xarray`: For handling and visualizing labeled multi-dimensional arrays.
+
+Example Usage:
+    # Open and inspect a Zarr file
+    dump_zarr_fields("path_to_zarr_file.zarr")
+
+    # Print slices of data over time
+    ds = xr.open_zarr("path_to_zarr_file.zarr")
+    print_slices_over_time(ds, limit=5)
+
+Notes:
+- Ensure the Zarr file path is valid and accessible before running the script.
+- The script expects the dataset to include 'cwb' and 'era5' variables for meaningful inspection.
+
+"""
 import sys
+import zarr
 import xarray as xr
 
 def print_slices_over_time(ds, limit=10):
+    """
+    Prints slices of 'cwb' and 'era5' data over time from the given dataset.
+
+    Parameters:
+        ds (xr.Dataset): The dataset containing 'cwb' and 'era5' variables with a 'time' dimension.
+        limit (int, optional): The maximum number of time steps to print. Defaults to 10.
+
+    Returns:
+        None
+    """
     print("\n" + "-"*40)
 
     end = min(ds.time.size, limit)
@@ -77,4 +124,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
