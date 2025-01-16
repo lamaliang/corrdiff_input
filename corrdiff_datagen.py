@@ -56,12 +56,8 @@ from era5 import generate_era5_output
 from util import is_local_testing, verify_dataset, dump_regrid_netcdf
 
 DEBUG = False  # Set to True to enable debugging
-CORRDIFF_GRID_COORD_KEYS = ["XLAT", "XLONG"]
 REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
-
-##
-# Functions
-##
+GRID_COORD_KEYS = ["XLAT", "XLONG"]
 
 def get_ref_grid():
     """
@@ -76,15 +72,15 @@ def get_ref_grid():
             - grid (xarray.Dataset): A dataset containing the latitude ('lat') and
               longitude ('lon') grids.
             - grid_coords (dict): A dictionary of extracted coordinate arrays
-              specified by `CORRDIFF_GRID_COORD_KEYS`.
+              specified by `GRID_COORD_KEYS`.
 
     Notes:
         - The reference grid file path is defined by the global constant `REF_GRID_NC`.
-        - The coordinate keys to extract are defined in `CORRDIFF_GRID_COORD_KEYS`.
+        - The coordinate keys to extract are defined in `GRID_COORD_KEYS`.
     """
     ref = xr.open_dataset(REF_GRID_NC, engine='netcdf4')
     grid = xr.Dataset({ "lat": ref.XLAT, "lon": ref.XLONG })
-    grid_coords = { key: ref.coords[key] for key in CORRDIFF_GRID_COORD_KEYS }
+    grid_coords = { key: ref.coords[key] for key in GRID_COORD_KEYS }
 
     return grid, grid_coords
 
@@ -93,10 +89,8 @@ def generate_output_dataset(tread_dir, era5_dir, start_date, end_date):
     Generates a consolidated output dataset by processing TReAD and ERA5 data fields.
 
     Parameters:
-        tread_file (str): Path to the TReAD file or directory containing the TReAD dataset.
+        tread_dir (str): Path to the directory containing the TReAD dataset.
         era5_dir (str): Path to the directory containing ERA5 datasets.
-        grid (xr.Dataset): Reference grid dataset for spatial alignment.
-        grid_coords (dict): Dictionary of grid coordinate arrays.
         start_date (str): Start date of the data range in 'YYYYMMDD' format.
         end_date (str): End date of the data range in 'YYYYMMDD' format.
 
@@ -132,7 +126,7 @@ def generate_output_dataset(tread_dir, era5_dir, start_date, end_date):
     # Create the output dataset
     out = xr.Dataset(
         coords={
-            **{key: grid_coords[key] for key in CORRDIFF_GRID_COORD_KEYS},
+            **{key: grid_coords[key] for key in GRID_COORD_KEYS},
             "XTIME": np.datetime64("2025-01-15 18:00:00", "ns"),  # Placeholder for timestamp
             "time": tread_data["cwb"].time,
             "cwb_variable": tread_data["cwb_variable"],
@@ -195,7 +189,7 @@ def get_data_dir():
     Notes:
         - In local testing environments (determined by `is_local_testing()`), the paths are set to
           `./data/tread` and `./data/era5`.
-        - In production environments, the paths point to remote directories:
+        - In BIG server environments, the paths point to remote directories:
           `/lfs/archive/TCCIP_data/TReAD/SFC/hr` for TReAD and
           `/lfs/archive/Reanalysis/ERA5` for ERA5.
     """

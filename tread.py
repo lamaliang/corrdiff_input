@@ -14,12 +14,12 @@ Features:
 Functions:
 - get_file_paths: Generate file paths for TReAD datasets based on a date range.
 - get_tread_dataset: Retrieve and preprocess TReAD datasets, including regridding.
-- get_cwb_pressure: Create a DataArray for CWB pressure levels.
-- get_cwb_variable: Create a DataArray for CWB variables.
+- get_cwb_pressure: Create a DataArray for TReAD pressure levels.
+- get_cwb_variable: Create a DataArray for TReAD variables.
 - get_cwb: Generate a stacked CWB DataArray from TReAD output variables.
-- get_cwb_center: Compute mean values for CWB variables over time and spatial dimensions.
-- get_cwb_scale: Compute standard deviation for CWB variables over time and spatial dimensions.
-- get_cwb_valid: Generate a validity mask for CWB time steps.
+- get_cwb_center: Compute mean values for TReAD variables over time and spatial dimensions.
+- get_cwb_scale: Compute standard deviation for TReAD variables over time and spatial dimensions.
+- get_cwb_valid: Generate a validity mask for TReAD time steps.
 - generate_tread_output: Produce processed TReAD outputs and associated metrics.
 
 Dependencies:
@@ -140,13 +140,13 @@ def get_tread_dataset(file, grid, start_date, end_date):
 
 def get_cwb_pressure(cwb_channel):
     """
-    Create a DataArray for CWB pressure levels.
+    Create a DataArray for TReAD pressure levels.
 
     Parameters:
-        cwb_channel (array-like): Array of CWB channel indices.
+        cwb_channel (array-like): Array of TReAD channel indices.
 
     Returns:
-        xarray.DataArray: DataArray representing CWB pressure levels.
+        xarray.DataArray: DataArray representing TReAD pressure levels.
     """
     return xr.DataArray(
         data=da.from_array(
@@ -160,14 +160,14 @@ def get_cwb_pressure(cwb_channel):
 
 def get_cwb_variable(cwb_var_names, cwb_pressure):
     """
-    Create a DataArray for CWB variable names.
+    Create a DataArray for TReAD variable names.
 
     Parameters:
-        cwb_var_names (array-like): Array of CWB variable names.
-        cwb_pressure (xarray.DataArray): DataArray of CWB pressure levels.
+        cwb_var_names (array-like): Array of TReAD variable names.
+        cwb_pressure (xarray.DataArray): DataArray of TReAD pressure levels.
 
     Returns:
-        xarray.DataArray: DataArray representing CWB variables.
+        xarray.DataArray: DataArray representing TReAD variables.
     """
     cwb_vars_dask = da.from_array(cwb_var_names, chunks=(len(TREAD_CHANNELS),))
     return xr.DataArray(
@@ -183,10 +183,10 @@ def get_cwb(tread_out, cwb_var_names, cwb_channel, cwb_pressure, cwb_variable):
 
     Parameters:
         tread_out (xarray.Dataset): The regridded TReAD dataset.
-        cwb_var_names (array-like): Array of CWB variable names.
-        cwb_channel (array-like): Array of CWB channel indices.
-        cwb_pressure (xarray.DataArray): DataArray of CWB pressure levels.
-        cwb_variable (xarray.DataArray): DataArray of CWB variables.
+        cwb_var_names (array-like): Array of TReAD variable names.
+        cwb_channel (array-like): Array of TReAD channel indices.
+        cwb_pressure (xarray.DataArray): DataArray of TReAD pressure levels.
+        cwb_variable (xarray.DataArray): DataArray of TReAD variables.
 
     Returns:
         xarray.DataArray: The processed CWB DataArray.
@@ -218,7 +218,7 @@ def get_cwb_center(tread_out, cwb_pressure, cwb_variable):
 
     Parameters:
         tread_out (xarray.Dataset): The dataset containing the variables.
-        cwb_pressure (xarray.DataArray): DataArray of CWB pressure levels.
+        cwb_pressure (xarray.DataArray): DataArray of TReAD pressure levels.
         cwb_variable (xarray.DataArray): DataArray of variable names to calculate the mean for.
 
     Returns:
@@ -248,7 +248,7 @@ def get_cwb_scale(tread_out, cwb_pressure, cwb_variable):
 
     Parameters:
         tread_out (xarray.Dataset): The dataset containing the variables.
-        cwb_pressure (xarray.DataArray): DataArray of CWB pressure levels.
+        cwb_pressure (xarray.DataArray): DataArray of TReAD pressure levels.
         cwb_variable (xarray.DataArray): DataArray of variable names to calculate the standard
                                          deviation for.
 
@@ -310,9 +310,9 @@ def generate_tread_output(file, grid, start_date, end_date):
     Returns:
         tuple: A tuple containing the following elements:
             - cwb (xarray.DataArray): The processed CWB DataArray.
-            - cwb_variable (xarray.DataArray): DataArray of CWB variables.
-            - cwb_center (xarray.DataArray): DataArray of mean values for CWB variables.
-            - cwb_scale (xarray.DataArray): DataArray of standard deviations for CWB variables.
+            - cwb_variable (xarray.DataArray): DataArray of TReAD variables.
+            - cwb_center (xarray.DataArray): DataArray of mean values for TReAD variables.
+            - cwb_scale (xarray.DataArray): DataArray of standard deviations for TReAD variables.
             - cwb_valid (xarray.DataArray): DataArray indicating the validity of each time step.
             - tread_pre_regrid (xarray.Dataset): The original TReAD dataset before regridding.
             - tread_out (xarray.Dataset): The regridded TReAD dataset.

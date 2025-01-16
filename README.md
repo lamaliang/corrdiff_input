@@ -31,6 +31,7 @@ data
 │   ├── ERA5_PRS_t_201801_r1440x721_day.nc
 │   ├── ERA5_PRS_u_201801_r1440x721_day.nc
 │   ├── ERA5_PRS_v_201801_r1440x721_day.nc
+│   ├── ERA5_PRS_w_201801_r1440x721_day.nc
 │   ├── ERA5_PRS_z_201801_r1440x721_day.nc
 │   ├── ERA5_SFC_msl_201801_r1440x721_day.nc
 │   ├── ERA5_SFC_t2m_201801_r1440x721_day.nc
@@ -39,9 +40,7 @@ data
 │   ├── ERA5_SFC_v10_201801_r1440x721_day.nc
 │   └── ERA5_oro_r1440x721.nc
 └── tread
-    ├── wrfo2D_d02_201801.nc
-    ├── wrfo2D_d02_201802.nc
-    └── wrfo2D_d02_201803.nc
+    └── wrfo2D_d02_201801.nc
 ```
 
 ## Generate CorrDiff dataset
@@ -79,6 +78,3 @@ Uncomment [lines](https://github.com/bentian/corrdiff_input/blob/cfc60d0a32a8c20
 
 ## Debugging
 - `zarr_dump.py`: Function to dump the generated zarr file.
-
-## Misc
-- `archive/*`: Initial version of python code by Lama, and the channel list accordingly.
