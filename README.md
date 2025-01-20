@@ -13,7 +13,21 @@ cd ref_grid
 python generate_wrf_coord.py
 ```
 
-## Prepare TReAD and ERA5 `.nc` files (local testing only)
+### Adjust REF grid size
+
+1. Modify `ny` and `nx` in `generate_wrf_coord.py` to customize REF grid size:
+
+```
+ny, nx = 208, 208               # Desired grid dimensions
+```
+
+2. Revise `REF_GRID_NC` in `corrdiff_datagen.py` acccordingly:
+
+```
+REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
+```
+
+## Prepare TReAD and ERA5 netcdf files (local testing only)
 - Put TReAD file below under `data/tread/`.
   - `wrfo2D_d02_{yyyymm}.nc`
 - Put ERA5 files below under `data/era5/`.
@@ -50,15 +64,19 @@ python corrdiff_datagen.py <start_date> <end_date>
 ```
 Example: `python corrdiff_datagen.py 20180101 20180105`
 
+### Dump data for debugging
+Set `DEBUG=True` in `corrdiff_datagen.py` to dump ERA5 & TReAD pre- and post-regridding data into netcdf files.
+
+```
+DEBUG = False  # Set to True to enable debugging
+```
+
 ## Dump zarr file
 
 ```
 python zarr_dump.py <zarr_file>
 ```
 Example: `python zarr_dump.py corrdiff_dataset_20180101_20180105.zarr`
-
-## Dump data for debugging
-Uncomment [lines](https://github.com/bentian/corrdiff_input/blob/cfc60d0a32a8c208bbf100cfd0f838b204fb4077/corrdiff_datagen.py#L59) in `corrdiff_datagen.py`.
 
 # Files
 
@@ -72,8 +90,8 @@ Uncomment [lines](https://github.com/bentian/corrdiff_input/blob/cfc60d0a32a8c20
 
 ## Generating dataset
 - `corrdiff_datagen.py`: Main functions that take start & end dates, generate output dataset, and write to zarr file.
-- `tread.py`: Functions that handle TReAD data.
-- `era5.py`: Functions that handle ERA5 data.
+- `tread.py`: Functions to handle TReAD data.
+- `era5.py`: Functions to handle ERA5 data.
 - `util.py`: Helper functions.
 
 ## Debugging
