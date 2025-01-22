@@ -18,7 +18,7 @@ Functions:
 - get_sfc_paths: Generate file paths for ERA5 surface data.
 - get_pressure_level_data: Retrieve and preprocess ERA5 pressure-level data.
 - get_surface_data: Retrieve and preprocess ERA5 surface data.
-- get_orography_data: Retrieve and preprocess ERA5 orography data.
+- get_orography_data: Prepare and align orography (terrain height) data for ERA5 processing.
 - get_era5_dataset: Retrieve and preprocess ERA5 datasets, including regridding and merging.
 - get_era5: Create a consolidated DataArray of ERA5 variables across channels.
 - get_era5_center: Compute mean values for ERA5 variables over time and spatial dimensions.
@@ -94,8 +94,8 @@ ERA5_CHANNELS = [
     {'name': 'u10', 'variable': 'eastward_wind_10m'},
     {'name': 'v10', 'variable': 'northward_wind_10m'},
     {'name': 'msl', 'variable': 'mean_sea_level_pressure'},
-    # Orography channel
-    {'name': 'oro', 'variable': 'terrain_height'},
+    # Orography channel from REF grid
+    {'name': 'TER', 'variable': 'terrain_height'},
 ]
 def get_prs_paths(folder, subfolder, variables, start_date, end_date):
     """
@@ -191,58 +191,77 @@ def get_surface_data(folder, duration):
         xarray.Dataset: Processed surface data.
     """
     surface_vars = list(dict.fromkeys(
-        ch['name'] for ch in ERA5_CHANNELS if 'pressure' not in ch and ch['name'] not in {'oro'}
+        ch['name'] for ch in ERA5_CHANNELS if 'pressure' not in ch and ch['name'] not in {'TER'}
     ))
 
     sfc_paths = get_sfc_paths(folder, 'day', surface_vars, duration.start, duration.stop)
     sfc_data = xr.open_mfdataset(sfc_paths, combine='by_coords').sel(time=duration)
     sfc_data['tp'] = sfc_data['tp'] * 24 * 1000  # Convert unit to mm/day
     sfc_data['tp'].attrs['units'] = 'mm/day'
+
     return sfc_data
 
-
-def get_orography_data(folder, time_coord):
+def get_orography_data(terrain, time_coord):
     """
-    Retrieve and process orography data from ERA5 files.
+    Prepare and align orography (terrain height) data for ERA5 processing.
 
     Parameters:
-        folder (str): Base directory containing ERA5 orography data files.
-        time_coord (xarray.DataArray): Time coordinate to align with.
+        terrain (xarray.DataArray): Terrain height data (e.g., from a reference grid).
+        time_coord (xarray.DataArray): Time coordinate to align the orography data with.
 
     Returns:
-        xarray.Dataset: Processed orography data.
-    """
-    topo = xr.open_mfdataset(folder + '/ERA5_oro_r1440x721.nc')[['oro']]
-    topo = topo.expand_dims(time=time_coord)
-    return topo.reindex(time=time_coord)
+        dask.array.Array: A Dask array of the terrain height data, expanded along the time
+                          dimension and aligned with the given time coordinate.
 
-def get_era5_dataset(folder, grid, start_date, end_date):
+    Notes:
+        - The `terrain` data is expanded along the `time` dimension to match the shape of ERA5
+          datasets.
+        - The returned data is aligned with the provided `time_coord` to ensure compatibility with
+          ERA5's temporal resolution.
     """
-    Retrieve and process ERA5 datasets for specified variables and date range,
-    regridding to match a reference grid.
+    return da.array(
+        terrain.expand_dims(time=time_coord).reindex(time=time_coord)
+    )
+
+def get_era5_dataset(folder, grid, terrain, start_date, end_date):
+    """
+    Retrieve and process ERA5 datasets for specified variables and date range, regridding to match
+    a reference grid.
 
     Parameters:
         folder (str): The base directory containing the ERA5 data files.
-        grid (xarray.Dataset): The reference grid dataset for regridding.
-        start_date (str or datetime-like): The start date of the desired data range.
-        end_date (str or datetime-like): The end date of the desired data range.
+        grid (xarray.Dataset): The reference grid dataset for spatial alignment and cropping.
+        terrain (xarray.DataArray): Orography (terrain height) data for the reference grid.
+        start_date (str): The start date of the desired data range.
+        end_date (str): The end date of the desired data range.
 
     Returns:
         tuple:
-            - xarray.Dataset: The cropped ERA5 dataset matching the spatial domain
-                              of the reference grid.
-            - xarray.Dataset: The regridded ERA5 dataset aligned with the reference grid.
+            - xarray.Dataset: The cropped ERA5 dataset limited to the spatial domain of the
+                              reference grid.
+            - xarray.Dataset: The regridded ERA5 dataset aligned with the reference grid,
+                              including additional terrain height (orography) data.
+
+    Notes:
+        - The dataset is processed in three stages:
+            1. Pressure level data (`get_pressure_level_data`).
+            2. Surface data (`get_surface_data`).
+            3. Orography (terrain height) data (`get_orography_data`).
+        - The cropped dataset retains only the spatial region matching the reference grid's
+          latitude and longitude.
+        - The regridded dataset ensures compatibility with the reference grid's resolution and
+          structure.
+        - The terrain height is appended as an additional variable in the regridded dataset.
     """
     duration = slice(str(start_date), str(end_date))
 
     # Process pressure levels, surface data, and orography data
     era5_prs = get_pressure_level_data(folder, duration)
     era5_sfc = get_surface_data(folder, duration)
-    era5_topo = get_orography_data(folder, era5_sfc.time)
 
-    # Merge prs, sfc, topo and rename variables.
-    era5 = xr.merge([era5_prs, era5_sfc, era5_topo]).rename({
-        ch['name']: ch['variable'] for ch in ERA5_CHANNELS
+    # Merge prs, sfc and rename variables.
+    era5 = xr.merge([era5_prs, era5_sfc]).rename({
+        ch['name']: ch['variable'] for ch in ERA5_CHANNELS if ch['name'] not in {'TER'}
     })
 
     # Crop to Taiwan domain given ERA5 is global data.
@@ -253,6 +272,10 @@ def get_era5_dataset(folder, grid, start_date, end_date):
 
     # Based on REF grid, regrid TReAD data over spatial dimensions for all timestamps.
     era5_out = regrid_dataset(era5_crop, grid)
+
+    # Append orography data from REF grid
+    ter = get_orography_data(terrain, era5_sfc.time)
+    era5_out["terrain_height"] = (list(era5_out["precitipation"].dims), ter)
 
     return era5_crop, era5_out
 
@@ -390,7 +413,7 @@ def get_era5_valid(era5):
         name="era5_valid"
     )
 
-def generate_era5_output(folder, grid, start_date, end_date):
+def generate_era5_output(folder, grid, terrain, start_date, end_date):
     """
     Processes ERA5 data files to generate consolidated outputs, including the ERA5 DataArray,
     its mean (center), standard deviation (scale), validity mask, and intermediate datasets.
@@ -398,6 +421,7 @@ def generate_era5_output(folder, grid, start_date, end_date):
     Parameters:
         folder (str): The base directory containing the ERA5 data files.
         grid (xarray.Dataset): The reference grid dataset for regridding.
+        terrain (xarray.DataArray): Orography (terrain height) data for the reference grid.
         start_date (str or datetime-like): The start date of the desired data range.
         end_date (str or datetime-like): The end date of the desired data range.
 
@@ -411,7 +435,7 @@ def generate_era5_output(folder, grid, start_date, end_date):
             - xarray.Dataset: The ERA5 dataset after regridding.
     """
     # Extract ERA5 data from file.
-    era5_pre_regrid, era5_out = get_era5_dataset(folder, grid, start_date, end_date)
+    era5_pre_regrid, era5_out = get_era5_dataset(folder, grid, terrain, start_date, end_date)
     print(f"\nERA5 dataset =>\n {era5_out}")
 
     # Generate output fields

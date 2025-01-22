@@ -19,7 +19,8 @@ Functions:
 - `generate_output_dataset`: Combines processed TReAD and ERA5 data into a consolidated dataset.
 - `write_to_zarr`: Writes the consolidated dataset to Zarr format with compression.
 - `get_data_dir`: Determines the paths for TReAD and ERA5 datasets based on the environment.
-- `get_ref_grid`: Loads the reference grid dataset and extracts the required coordinates.
+- `get_ref_grid`: Loads the reference grid dataset and extracts the required coordinates
+   and terrain data.
 - `generate_corrdiff_zarr`: Orchestrates the generation, verification, and saving of the dataset.
 - `main`: Parses command-line arguments and triggers the dataset generation process.
 
@@ -61,11 +62,12 @@ GRID_COORD_KEYS = ["XLAT", "XLONG"]
 
 def get_ref_grid():
     """
-    Retrieves the reference grid dataset and its coordinates.
+    Retrieves the reference grid dataset, its coordinates, and terrain data.
 
-    This function opens a predefined reference grid NetCDF file and extracts the latitude and
-    longitude grid as a new xarray.Dataset. It also extracts specific coordinate keys from the
-    reference dataset for use in downstream processing.
+    This function opens a predefined reference grid NetCDF file and extracts:
+    - Latitude and longitude grids as a new xarray.Dataset.
+    - Specific coordinate keys for use in downstream processing.
+    - Terrain data ('TER') for use in regridding or terrain height processing.
 
     Returns:
         tuple:
@@ -73,16 +75,19 @@ def get_ref_grid():
               longitude ('lon') grids.
             - grid_coords (dict): A dictionary of extracted coordinate arrays
               specified by `GRID_COORD_KEYS`.
+            - terrain (xarray.DataArray): Terrain height data ('TER') from the reference grid.
 
     Notes:
         - The reference grid file path is defined by the global constant `REF_GRID_NC`.
         - The coordinate keys to extract are defined in `GRID_COORD_KEYS`.
+        - This function assumes the reference grid file contains a variable named 'TER'
+          for terrain height.
     """
     ref = xr.open_dataset(REF_GRID_NC, engine='netcdf4')
     grid = xr.Dataset({ "lat": ref.XLAT, "lon": ref.XLONG })
     grid_coords = { key: ref.coords[key] for key in GRID_COORD_KEYS }
 
-    return grid, grid_coords
+    return grid, grid_coords, ref['TER']
 
 def generate_output_dataset(tread_dir, era5_dir, start_date, end_date):
     """
@@ -98,11 +103,11 @@ def generate_output_dataset(tread_dir, era5_dir, start_date, end_date):
         xr.Dataset: A dataset containing consolidated and processed TReAD and ERA5 data fields.
     """
     # Get REF grid
-    grid, grid_coords = get_ref_grid()
+    grid, grid_coords, terrain = get_ref_grid()
 
     # Generate CWB (TReAD) and ERA5 output fields
     tread_outputs = generate_tread_output(tread_dir, grid, start_date, end_date)
-    era5_outputs = generate_era5_output(era5_dir, grid, start_date, end_date)
+    era5_outputs = generate_era5_output(era5_dir, grid, terrain, start_date, end_date)
 
     # Group outputs into dictionaries
     tread_data = {
