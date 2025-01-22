@@ -18,7 +18,7 @@ Functions:
 - get_sfc_paths: Generate file paths for ERA5 surface data.
 - get_pressure_level_data: Retrieve and preprocess ERA5 pressure-level data.
 - get_surface_data: Retrieve and preprocess ERA5 surface data.
-- get_orography_data: Retrieve and preprocess ERA5 orography data.
+- get_orography_data: Prepare and align orography (terrain height) data for ERA5 processing.
 - get_era5_dataset: Retrieve and preprocess ERA5 datasets, including regridding and merging.
 - get_era5: Create a consolidated DataArray of ERA5 variables across channels.
 - get_era5_center: Compute mean values for ERA5 variables over time and spatial dimensions.
@@ -203,14 +203,21 @@ def get_surface_data(folder, duration):
 
 def get_orography_data(terrain, time_coord):
     """
-    Retrieve and process orography data from ERA5 files.
+    Prepare and align orography (terrain height) data for ERA5 processing.
 
     Parameters:
-        folder (str): Base directory containing ERA5 orography data files.
-        time_coord (xarray.DataArray): Time coordinate to align with.
+        terrain (xarray.DataArray): Terrain height data (e.g., from a reference grid).
+        time_coord (xarray.DataArray): Time coordinate to align the orography data with.
 
     Returns:
-        xarray.Dataset: Processed orography data.
+        dask.array.Array: A Dask array of the terrain height data, expanded along the time
+                          dimension and aligned with the given time coordinate.
+
+    Notes:
+        - The `terrain` data is expanded along the `time` dimension to match the shape of ERA5
+          datasets.
+        - The returned data is aligned with the provided `time_coord` to ensure compatibility with
+          ERA5's temporal resolution.
     """
     return da.array(
         terrain.expand_dims(time=time_coord).reindex(time=time_coord)
@@ -218,20 +225,33 @@ def get_orography_data(terrain, time_coord):
 
 def get_era5_dataset(folder, grid, terrain, start_date, end_date):
     """
-    Retrieve and process ERA5 datasets for specified variables and date range,
-    regridding to match a reference grid.
+    Retrieve and process ERA5 datasets for specified variables and date range, regridding to match
+    a reference grid.
 
     Parameters:
         folder (str): The base directory containing the ERA5 data files.
-        grid (xarray.Dataset): The reference grid dataset for regridding.
-        start_date (str or datetime-like): The start date of the desired data range.
-        end_date (str or datetime-like): The end date of the desired data range.
+        grid (xarray.Dataset): The reference grid dataset for spatial alignment and cropping.
+        terrain (xarray.DataArray): Orography (terrain height) data for the reference grid.
+        start_date (str): The start date of the desired data range.
+        end_date (str): The end date of the desired data range.
 
     Returns:
         tuple:
-            - xarray.Dataset: The cropped ERA5 dataset matching the spatial domain
-                              of the reference grid.
-            - xarray.Dataset: The regridded ERA5 dataset aligned with the reference grid.
+            - xarray.Dataset: The cropped ERA5 dataset limited to the spatial domain of the
+                              reference grid.
+            - xarray.Dataset: The regridded ERA5 dataset aligned with the reference grid,
+                              including additional terrain height (orography) data.
+
+    Notes:
+        - The dataset is processed in three stages:
+            1. Pressure level data (`get_pressure_level_data`).
+            2. Surface data (`get_surface_data`).
+            3. Orography (terrain height) data (`get_orography_data`).
+        - The cropped dataset retains only the spatial region matching the reference grid's
+          latitude and longitude.
+        - The regridded dataset ensures compatibility with the reference grid's resolution and
+          structure.
+        - The terrain height is appended as an additional variable in the regridded dataset.
     """
     duration = slice(str(start_date), str(end_date))
 
@@ -401,6 +421,7 @@ def generate_era5_output(folder, grid, terrain, start_date, end_date):
     Parameters:
         folder (str): The base directory containing the ERA5 data files.
         grid (xarray.Dataset): The reference grid dataset for regridding.
+        terrain (xarray.DataArray): Orography (terrain height) data for the reference grid.
         start_date (str or datetime-like): The start date of the desired data range.
         end_date (str or datetime-like): The end date of the desired data range.
 
