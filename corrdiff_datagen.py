@@ -82,7 +82,7 @@ def get_ref_grid():
     grid = xr.Dataset({ "lat": ref.XLAT, "lon": ref.XLONG })
     grid_coords = { key: ref.coords[key] for key in GRID_COORD_KEYS }
 
-    return grid, grid_coords
+    return grid, grid_coords, ref['TER']
 
 def generate_output_dataset(tread_dir, era5_dir, start_date, end_date):
     """
@@ -98,11 +98,11 @@ def generate_output_dataset(tread_dir, era5_dir, start_date, end_date):
         xr.Dataset: A dataset containing consolidated and processed TReAD and ERA5 data fields.
     """
     # Get REF grid
-    grid, grid_coords = get_ref_grid()
+    grid, grid_coords, terrain = get_ref_grid()
 
     # Generate CWB (TReAD) and ERA5 output fields
     tread_outputs = generate_tread_output(tread_dir, grid, start_date, end_date)
-    era5_outputs = generate_era5_output(era5_dir, grid, start_date, end_date)
+    era5_outputs = generate_era5_output(era5_dir, grid, terrain, start_date, end_date)
 
     # Group outputs into dictionaries
     tread_data = {
