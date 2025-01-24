@@ -47,11 +47,12 @@ Notes:
 
 """
 import sys
+from typing import Tuple
+
 import zarr
 import xarray as xr
 import numpy as np
 from dask.diagnostics import ProgressBar
-from typing import Tuple
 
 from tread import generate_tread_output
 from era5 import generate_era5_output

@@ -50,11 +50,12 @@ Notes:
 
 """
 import os
+from typing import List, Tuple
+
 import dask.array as da
 import numpy as np
 import pandas as pd
 import xarray as xr
-from typing import List, Tuple
 
 from util import regrid_dataset, create_and_process_dataarray
 
