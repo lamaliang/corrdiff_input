@@ -61,6 +61,7 @@ import dask.array as da
 import numpy as np
 import pandas as pd
 import xarray as xr
+from typing import List, Tuple
 
 from util import regrid_dataset, create_and_process_dataarray, is_local_testing
 
@@ -97,7 +98,14 @@ ERA5_CHANNELS = [
     # Orography channel from REF grid
     {'name': 'TER', 'variable': 'terrain_height'},
 ]
-def get_prs_paths(folder, subfolder, variables, start_date, end_date):
+
+def get_prs_paths(
+    folder: str,
+    subfolder: str,
+    variables: List[str],
+    start_date: str,
+    end_date: str
+) -> List[str]:
     """
     Generate file paths for ERA5 pressure level data files within a specified date range.
 
@@ -126,7 +134,13 @@ def get_prs_paths(folder, subfolder, variables, start_date, end_date):
         for var in variables for yyyymm in date_range
     ]
 
-def get_sfc_paths(folder, subfolder, variables, start_date, end_date):
+def get_sfc_paths(
+    folder: str,
+    subfolder: str,
+    variables: List[str],
+    start_date: str,
+    end_date: str
+) -> List[str]:
     """
     Generate file paths for ERA5 surface data files within a specified date range.
 
@@ -155,14 +169,12 @@ def get_sfc_paths(folder, subfolder, variables, start_date, end_date):
         for var in variables for yyyymm in date_range
     ]
 
-def get_pressure_level_data(folder, duration):
+def get_pressure_level_data(folder: str, duration: slice) -> xr.Dataset:
     """
     Retrieve and process pressure level data from ERA5 files.
 
     Parameters:
         folder (str): Base directory containing ERA5 pressure level data files.
-        pressure_level_vars (list): List of variable names for pressure levels.
-        pressure_levels (list): Sorted list of pressure levels to extract.
         duration (slice): Time slice for the desired data range.
 
     Returns:
@@ -178,7 +190,7 @@ def get_pressure_level_data(folder, duration):
             .sel(level=pressure_levels, time=duration)
 
 
-def get_surface_data(folder, duration):
+def get_surface_data(folder: str, duration: slice) -> xr.Dataset:
     """
     Retrieve and process surface data from ERA5 files.
 
@@ -201,7 +213,7 @@ def get_surface_data(folder, duration):
 
     return sfc_data
 
-def get_orography_data(terrain, time_coord):
+def get_orography_data(terrain: xr.DataArray, time_coord: xr.DataArray) -> da.Array:
     """
     Prepare and align orography (terrain height) data for ERA5 processing.
 
@@ -223,7 +235,13 @@ def get_orography_data(terrain, time_coord):
         terrain.expand_dims(time=time_coord).reindex(time=time_coord)
     )
 
-def get_era5_dataset(folder, grid, terrain, start_date, end_date):
+def get_era5_dataset(
+    folder: str,
+    grid: xr.Dataset,
+    terrain: xr.DataArray,
+    start_date: str,
+    end_date: str
+) -> Tuple[xr.Dataset, xr.Dataset]:
     """
     Retrieve and process ERA5 datasets for specified variables and date range, regridding to match
     a reference grid.
@@ -279,7 +297,7 @@ def get_era5_dataset(folder, grid, terrain, start_date, end_date):
 
     return era5_crop, era5_out
 
-def get_era5(era5_out):
+def get_era5(era5_out: xr.Dataset) -> xr.DataArray:
     """
     Constructs a consolidated ERA5 DataArray by stacking specified variables across channels.
 
@@ -329,7 +347,7 @@ def get_era5(era5_out):
     return create_and_process_dataarray(
         "era5", stack_era5, era5_dims, era5_coords, era5_chunk_sizes)
 
-def get_era5_center(era5):
+def get_era5_center(era5: xr.DataArray) -> xr.DataArray:
     """
     Computes the mean value for each ERA5 channel across time and spatial dimensions.
 
@@ -358,7 +376,7 @@ def get_era5_center(era5):
         name="era5_center"
     )
 
-def get_era5_scale(era5):
+def get_era5_scale(era5: xr.DataArray) -> xr.DataArray:
     """
     Computes the standard deviation for each ERA5 channel across time and spatial dimensions.
 
@@ -386,7 +404,7 @@ def get_era5_scale(era5):
         name="era5_scale"
     )
 
-def get_era5_valid(era5):
+def get_era5_valid(era5: xr.DataArray) -> xr.DataArray:
     """
     Generates a DataArray indicating the validity of each ERA5 channel over time.
 
@@ -413,7 +431,21 @@ def get_era5_valid(era5):
         name="era5_valid"
     )
 
-def generate_era5_output(folder, grid, terrain, start_date, end_date):
+def generate_era5_output(
+    folder: str,
+    grid: xr.Dataset,
+    terrain: xr.DataArray,
+    start_date: str,
+    end_date: str
+) -> Tuple[
+    xr.DataArray,  # ERA5 dataarray
+    xr.DataArray,  # ERA5 variable
+    xr.DataArray,  # ERA5 center
+    xr.DataArray,  # ERA5 scale
+    xr.DataArray,  # ERA5 valid
+    xr.Dataset,    # ERA5 pre-regrid dataset
+    xr.Dataset     # ERA5 post-regrid dataset
+]:
     """
     Processes ERA5 data files to generate consolidated outputs, including the ERA5 DataArray,
     its mean (center), standard deviation (scale), validity mask, and intermediate datasets.

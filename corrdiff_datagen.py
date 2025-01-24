@@ -51,6 +51,7 @@ import zarr
 import xarray as xr
 import numpy as np
 from dask.diagnostics import ProgressBar
+from typing import Tuple
 
 from tread import generate_tread_output
 from era5 import generate_era5_output
@@ -60,7 +61,7 @@ DEBUG = False  # Set to True to enable debugging
 REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
 GRID_COORD_KEYS = ["XLAT", "XLONG"]
 
-def get_ref_grid():
+def get_ref_grid() -> Tuple[xr.Dataset, dict, xr.DataArray]:
     """
     Retrieves the reference grid dataset, its coordinates, and terrain data.
 
@@ -89,7 +90,8 @@ def get_ref_grid():
 
     return grid, grid_coords, ref['TER']
 
-def generate_output_dataset(tread_dir, era5_dir, start_date, end_date):
+def generate_output_dataset(tread_dir: str, era5_dir: str,
+                            start_date: str, end_date: str) -> xr.Dataset:
     """
     Generates a consolidated output dataset by processing TReAD and ERA5 data fields.
 
@@ -162,7 +164,7 @@ def generate_output_dataset(tread_dir, era5_dir, start_date, end_date):
 
     return out
 
-def write_to_zarr(out_path, out_ds):
+def write_to_zarr(out_path: str, out_ds: xr.Dataset) -> None:
     """
     Writes the given dataset to a Zarr storage format with compression.
 
@@ -182,7 +184,7 @@ def write_to_zarr(out_path, out_ds):
 
     print(f"Data successfully saved to [{out_path}]")
 
-def get_data_dir():
+def get_data_dir() -> Tuple[str, str]:
     """
     Determines the base directories for TReAD and ERA5 datasets based on the execution environment.
 
@@ -202,7 +204,7 @@ def get_data_dir():
         return "./data/tread", "./data/era5"
     return "/lfs/archive/TCCIP_data/TReAD/SFC/hr", "/lfs/archive/Reanalysis/ERA5"
 
-def generate_corrdiff_zarr(start_date, end_date):
+def generate_corrdiff_zarr(start_date: str, end_date: str) -> None:
     """
     Generates and verifies a consolidated dataset for TReAD and ERA5 data,
     then writes it to a Zarr file format.

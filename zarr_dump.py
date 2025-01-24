@@ -39,7 +39,7 @@ import sys
 import zarr
 import xarray as xr
 
-def print_slices_over_time(ds, limit=10):
+def print_slices_over_time(ds: xr.Dataset, limit=10) -> None:
     """
     Prints slices of 'cwb' and 'era5' data over time from the given dataset.
 
@@ -67,7 +67,7 @@ def print_slices_over_time(ds, limit=10):
 
     print("\n" + "-"*40 + "\n")
 
-def dump_zarr_fields(zarr_path):
+def dump_zarr_fields(zarr_path: str) -> None:
     """
     Dumps specified fields from a Zarr file and prints their content and structure.
 

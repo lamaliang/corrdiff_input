@@ -54,6 +54,7 @@ import dask.array as da
 import numpy as np
 import pandas as pd
 import xarray as xr
+from typing import List, Tuple
 
 from util import regrid_dataset, create_and_process_dataarray
 
@@ -76,7 +77,7 @@ TREAD_CHANNELS = {
     "T2MIN": "minimum_temperature_2m",
 }
 
-def get_file_paths(folder, start_date, end_date):
+def get_file_paths(folder: str, start_date: str, end_date: str) -> List[str]:
     """
     Generate a list of file paths for the specified date range.
 
@@ -94,7 +95,8 @@ def get_file_paths(folder, start_date, end_date):
         for yyyymm in date_range
     ]
 
-def get_tread_dataset(file, grid, start_date, end_date):
+def get_tread_dataset(file: str, grid: xr.Dataset,
+                      start_date: str, end_date: str) -> Tuple[xr.Dataset, xr.Dataset]:
     """
     Retrieve and process TReAD dataset within the specified date range.
 
@@ -138,7 +140,7 @@ def get_tread_dataset(file, grid, start_date, end_date):
 
     return tread, tread_out
 
-def get_cwb_pressure(cwb_channel):
+def get_cwb_pressure(cwb_channel: np.ndarray) -> xr.DataArray:
     """
     Create a DataArray for TReAD pressure levels.
 
@@ -158,7 +160,7 @@ def get_cwb_pressure(cwb_channel):
         name="cwb_pressure"
     )
 
-def get_cwb_variable(cwb_var_names, cwb_pressure):
+def get_cwb_variable(cwb_var_names: List[str], cwb_pressure: xr.DataArray) -> xr.DataArray:
     """
     Create a DataArray for TReAD variable names.
 
@@ -177,7 +179,13 @@ def get_cwb_variable(cwb_var_names, cwb_pressure):
         name="cwb_variable"
     )
 
-def get_cwb(tread_out, cwb_var_names, cwb_channel, cwb_pressure, cwb_variable):
+def get_cwb(
+        tread_out: xr.Dataset,
+        cwb_var_names: List[str],
+        cwb_channel: List[str],
+        cwb_pressure: xr.DataArray,
+        cwb_variable: xr.DataArray
+    ) -> xr.DataArray:
     """
     Generate the CWB DataArray by stacking TReAD output variables.
 
@@ -212,7 +220,8 @@ def get_cwb(tread_out, cwb_var_names, cwb_channel, cwb_pressure, cwb_variable):
 
     return create_and_process_dataarray("cwb", stack_tread, cwb_dims, cwb_coords, cwb_chunk_sizes)
 
-def get_cwb_center(tread_out, cwb_pressure, cwb_variable):
+def get_cwb_center(tread_out: xr.Dataset, cwb_pressure: xr.DataArray,
+                   cwb_variable: xr.DataArray) -> xr.DataArray:
     """
     Calculate the mean values of specified variables over time and spatial dimensions.
 
@@ -242,7 +251,8 @@ def get_cwb_center(tread_out, cwb_pressure, cwb_variable):
         name="cwb_center"
     )
 
-def get_cwb_scale(tread_out, cwb_pressure, cwb_variable):
+def get_cwb_scale(tread_out: xr.Dataset, cwb_pressure: xr.DataArray,
+                  cwb_variable: xr.DataArray) -> xr.DataArray:
     """
     Calculate the standard deviation of specified variables over time and spatial dimensions.
 
@@ -273,7 +283,7 @@ def get_cwb_scale(tread_out, cwb_pressure, cwb_variable):
         name="cwb_scale"
     )
 
-def get_cwb_valid(tread_out, cwb):
+def get_cwb_valid(tread_out: xr.Dataset, cwb: xr.DataArray) -> xr.DataArray:
     """
     Generate a DataArray indicating the validity of each time step in the dataset.
 
@@ -297,7 +307,20 @@ def get_cwb_valid(tread_out, cwb):
         name="cwb_valid"
     )
 
-def generate_tread_output(file, grid, start_date, end_date):
+def generate_tread_output(
+    file: str,
+    grid: xr.Dataset,
+    start_date: str,
+    end_date: str
+) -> Tuple[
+    xr.DataArray,  # TReAD dataarray
+    xr.DataArray,  # TReAD variable
+    xr.DataArray,  # TReAD center
+    xr.DataArray,  # TReAD scale
+    xr.DataArray,  # TReAD valid
+    xr.Dataset,    # TReAD pre-regrid dataset
+    xr.Dataset     # TReAD post-regrid dataset
+]:
     """
     Generate processed TReAD output datasets and related CWB DataArrays for a specified date range.
 

@@ -40,10 +40,12 @@ Example Usage:
     print(message)
 """
 import os
+import numpy as np
 import xesmf as xe
 import xarray as xr
+from typing import List, Dict
 
-def regrid_dataset(ds, grid) -> xr.Dataset:
+def regrid_dataset(ds: xr.Dataset, grid: xr.Dataset) -> xr.Dataset:
     """
     Regrids the input dataset to match the target grid using bilinear interpolation.
 
@@ -69,20 +71,26 @@ def regrid_dataset(ds, grid) -> xr.Dataset:
 
     return ds_regrid
 
-def create_and_process_dataarray(name, stack_data, dims, coords, chunk_sizes) -> xr.DataArray:
+def create_and_process_dataarray(
+    name: str,
+    stack_data: np.ndarray,
+    dims: List[str],
+    coords: Dict[str, np.ndarray],
+    chunk_sizes: Dict[str, int]
+) -> xr.DataArray:
     """
     Creates and processes an xarray.DataArray with specified
     dimensions, coordinates, and chunk sizes.
 
     Parameters:
-    - name: Name of the DataArray.
-    - stack_data: The stacked data to initialize the DataArray.
-    - dims: A list of dimension names.
-    - coords: A dictionary of coordinates for the DataArray.
-    - chunk_sizes: A dictionary specifying chunk sizes for each dimension.
+    - name (str): Name of the DataArray.
+    - stack_data (np.ndarray): The stacked data to initialize the DataArray.
+    - dims (List[str]): A list of dimension names.
+    - coords (Dict[str, np.ndarray]): A dictionary of coordinates for the DataArray.
+    - chunk_sizes (Dict[str, int]): A dictionary specifying chunk sizes for each dimension.
 
     Returns:
-    - An xarray.DataArray with assigned coordinates and chunks.
+    - xr.DataArray: An xarray.DataArray with assigned coordinates and chunks.
     """
     # Create the DataArray
     dataarray = xr.DataArray(
@@ -100,7 +108,7 @@ def create_and_process_dataarray(name, stack_data, dims, coords, chunk_sizes) ->
 
     return dataarray
 
-def verify_dataset(dataset) -> tuple[bool, str]:
+def verify_dataset(ds: xr.Dataset) -> tuple[bool, str]:
     """
     Verifies an xarray.Dataset to ensure:
     1. Dimensions 'south_north' and 'west_east' are equal and both are multiples of 16.
@@ -128,29 +136,34 @@ def verify_dataset(dataset) -> tuple[bool, str]:
     ]
 
     # Check required dimensions
-    missing_dims = [dim for dim in required_dims if dim not in dataset.dims]
+    missing_dims = [dim for dim in required_dims if dim not in ds.dims]
     if missing_dims:
         return False, f"Missing required dimensions: {', '.join(missing_dims)}."
-    if dataset.dims["south_north"] != dataset.dims["west_east"]:
+    if ds.dims["south_north"] != ds.dims["west_east"]:
         return False, "Dimensions 'south_north' and 'west_east' are not equal."
-    if dataset.dims["south_north"] % 16 != 0:
+    if ds.dims["south_north"] % 16 != 0:
         return False, "Dimensions 'south_north' and 'west_east' are not multiples of 16."
 
     # Check coordinates
-    missing_coords = [coord for coord in required_coords if coord not in dataset.coords]
+    missing_coords = [coord for coord in required_coords if coord not in ds.coords]
     if missing_coords:
         return False, f"Missing required coordinates: {', '.join(missing_coords)}."
 
     # Check data variables
-    missing_vars = [var for var in required_vars if var not in dataset.data_vars]
+    missing_vars = [var for var in required_vars if var not in ds.data_vars]
     if missing_vars:
         return False, f"Missing required data variables: {', '.join(missing_vars)}."
 
     # All checks passed
     return True, "Dataset verification passed successfully."
 
-def dump_regrid_netcdf(subdir, tread_pre_regrid, tread_post_regrid, \
-                       era5_pre_regrid, era5_post_regrid) -> None:
+def dump_regrid_netcdf(
+    subdir: str,
+    tread_pre_regrid: xr.Dataset,
+    tread_post_regrid: xr.Dataset,
+    era5_pre_regrid: xr.Dataset,
+    era5_post_regrid: xr.Dataset
+) -> None:
     """
     Saves the provided datasets to NetCDF files within a specified subdirectory.
 
