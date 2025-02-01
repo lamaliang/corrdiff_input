@@ -1,12 +1,50 @@
-# Run the code
+# 📌 Overview
+This project provides a set of tools to processing, merging, and exporting scientific datasets.. It includes:
 
-## Set up environment via conda
+- Data extraction and conversion from ERA5 and TReAD datasets
+- Processing and regridding for dataset compatibility
+- Exporting processed data into structured formats (Zarr, NetCDF)
+
+# 📦 Installation
+
+Before using the project, install the required dependencies:
 
 ```
 conda env create -f corrdiff_input.yml
 ```
 
-## Generate REF grid file for output zarr
+# 🚀 Usage
+
+## 1️⃣ Generate Processed Datasets
+
+Run the dataset generation script:
+
+`python corrdiff_datagen.py <start_date> <end_date>`
+
+Example
+
+`python corrdiff_datagen.py 20180101 20180105`
+
+- Fetches data from various sources
+- Regrids datasets to match reference grid
+- Saves output in Zarr format
+
+### Dump data for debugging
+Set `DEBUG=True` in `corrdiff_datagen.py` to dump ERA5 & TReAD pre- and post-regridding data into netcdf files.
+
+```
+DEBUG = True  # Set to True to enable debugging
+```
+
+## 2️⃣ Extract and Dump Zarr Data
+
+Run `zarr_dump.py` to extract data slices:
+
+`python zarr_dump.py <input_zarr_file> <output_directory>`
+
+## 3️⃣ Generate REF grid file for output Zarr
+
+Run `ref_grid/generate_wrf_coord.py` to generate REF grid for regridding ERA5 and TReAD datasets:
 
 ```
 cd ref_grid
@@ -27,72 +65,80 @@ ny, nx = 208, 208               # Desired grid dimensions
 REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
 ```
 
+# 📂 Project Structure
+
 ## Prepare TReAD and ERA5 netcdf files (local testing only)
 - Put TReAD file below under `data/tread/`.
   - `wrfo2D_d02_{yyyymm}.nc`
 - Put ERA5 files below under `data/era5/`.
   - `ERA5_PRS_*_{yyyymm}_r1440x721_day.nc`
   - `ERA5_SFC_*_{yyyymm}_r1440x721_day.nc`
-  - `ERA5_oro_r1440x721_day.nc`
 
-### Example
-
-```
-data
-├── era5
-│   ├── ERA5_PRS_q_201801_r1440x721_day.nc
-│   ├── ERA5_PRS_r_201801_r1440x721_day.nc
-│   ├── ERA5_PRS_t_201801_r1440x721_day.nc
-│   ├── ERA5_PRS_u_201801_r1440x721_day.nc
-│   ├── ERA5_PRS_v_201801_r1440x721_day.nc
-│   ├── ERA5_PRS_w_201801_r1440x721_day.nc
-│   ├── ERA5_PRS_z_201801_r1440x721_day.nc
-│   ├── ERA5_SFC_msl_201801_r1440x721_day.nc
-│   ├── ERA5_SFC_t2m_201801_r1440x721_day.nc
-│   ├── ERA5_SFC_tp_201801_r1440x721_day.nc
-│   ├── ERA5_SFC_u10_201801_r1440x721_day.nc
-│   ├── ERA5_SFC_v10_201801_r1440x721_day.nc
-│   └── ERA5_oro_r1440x721.nc
-└── tread
-    └── wrfo2D_d02_201801.nc
-```
-
-## Generate CorrDiff dataset
+## Example
 
 ```
-python corrdiff_datagen.py <start_date> <end_date>
+📦 corrdiff_input
+ ┣ 📂 data/                   # Input data (NetCDF files of ERA5 and TReAD datasets)
+   ┣ 📂 tread/
+     ┗ 📜 wrfo2D_d02_201801.nc
+   ┗ 📂 era5/
+     ┣ 📜 ERA5_PRS_q_201801_r1440x721_day.nc
+     ┣ 📜 ERA5_PRS_r_201801_r1440x721_day.nc
+     ┣ 📜 ERA5_PRS_t_201801_r1440x721_day.nc
+     ┣ 📜 ERA5_PRS_u_201801_r1440x721_day.nc
+     ┣ 📜 ERA5_PRS_v_201801_r1440x721_day.nc
+     ┣ 📜 ERA5_PRS_w_201801_r1440x721_day.nc
+     ┣ 📜 ERA5_PRS_z_201801_r1440x721_day.nc
+     ┣ 📜 ERA5_SFC_msl_201801_r1440x721_day.nc
+     ┣ 📜 ERA5_SFC_t2m_201801_r1440x721_day.nc
+     ┣ 📜 ERA5_SFC_tp_201801_r1440x721_day.nc
+     ┣ 📜 ERA5_SFC_u10_201801_r1440x721_day.nc
+     ┗ 📜 ERA5_SFC_v10_201801_r1440x721_day.nc
+ ┣ 📂 ref_grid/
+   ┣ 📜 generate_wrf_coord.py       # Generates REF grid
+   ┣ 📜 TReAD_wrf_d02_info.nc       # TReAD grid used to generate REF grid
+   ┗ 📜 wrf_208x208_grid_coords.nc  # Default 208 x 208 REF grid
+ ┣ 📜 corrdiff_datagen.py     # Dataset generation script
+ ┣ 📜 era5.py                 # ERA5 data processing
+ ┣ 📜 tread.py                # TReAD data processing
+ ┣ 📜 util.py                 # Utility functions for data transformation
+ ┣ 📜 zarr_dump.py            # Zarr data extraction
+ ┗ 📜 README.md               # Project documentation
 ```
-Example: `python corrdiff_datagen.py 20180101 20180105`
 
-### Dump data for debugging
-Set `DEBUG=True` in `corrdiff_datagen.py` to dump ERA5 & TReAD pre- and post-regridding data into netcdf files.
+📜 Script Descriptions
 
-```
-DEBUG = False  # Set to True to enable debugging
-```
+🔹 corrdiff_datagen.py - Generate Processed Datasets
+  - Fetches datasets from multiple sources
+  - Regrids them to match a common grid
+  - Saves final dataset in Zarr format
 
-## Dump zarr file
+🔹 era5.py - ERA5 Data Processing
+  - Loads ERA5 dataset
+  - Performs regridding and data aggregation
+  - Computes mean, standard deviation, and validity
 
-```
-python zarr_dump.py <zarr_file>
-```
-Example: `python zarr_dump.py corrdiff_dataset_20180101_20180105.zarr`
+🔹 tread.py - TReAD Data Processing
+  - Loads TReAD dataset
+  - Computes daily aggregated variables
+  - Regrids dataset for analysis
 
-# Files
+🔹 util.py - General Utilities
+  - Provides data transformation, regridding, and verification utilities
 
-## Setup
-- `corrdiff_input.yml`: conda enviroment `.yml` file.
+🔹 zarr_dump.py - Inspect Zarr Datasets
+  - Extracts and saves data slices from Zarr files
 
-## Generating REF grid
-- `ref_grid/generate_wrf_coord.py`: Function to generate REF grid, with customized resolution and geographical area.
-- `ref_grid/wrf_208x208_grid_coords.nc`: REF grid file for output zarr.
-- `ref_grid/TReAD_wrf_d02_info.nc`: TReAD info file for REF grid generation.
+🔹 ref_grid/generate_wrf_coord.py - Extract Grid Coordinates
+  - Extracts and saves grid coordinates from datasets
 
-## Generating dataset
-- `corrdiff_datagen.py`: Main functions that take start & end dates, generate output dataset, and write to zarr file.
-- `tread.py`: Functions to handle TReAD data.
-- `era5.py`: Functions to handle ERA5 data.
-- `util.py`: Helper functions.
+# 🎯 Why Use This Project?
 
-## Debugging
-- `zarr_dump.py`: Function to dump the generated zarr file.
+- ✅ Automates Data Extraction and Processing
+- ✅ Generates Ready-to-Use Datasets
+- ✅ Handles Large NetCDF & Zarr Datasets Efficiently
+- ✅ Supports Regridding, Verification, and Data Export
+
+# ⚡ Contributing
+
+Feel free to submit pull requests or open issues for improvements!
