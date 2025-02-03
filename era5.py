@@ -29,7 +29,7 @@ Functions:
                         aggregated datasets.
 
 Dependencies:
-- `os`: For file path manipulation.
+- `pathlib.Path`: For file path manipulation.
 - `dask.array`: For efficient handling of large datasets with lazy evaluation.
 - `numpy`: For numerical operations.
 - `pandas`: For handling date ranges and date-time operations.
@@ -56,7 +56,7 @@ Notes:
 - The module leverages Dask for efficient computation, especially for large datasets.
 - The ERA5_CHANNELS constant defines the supported ERA5 variables and their mappings.
 """
-import os
+from pathlib import Path
 from typing import List, Tuple
 
 import dask.array as da
@@ -106,7 +106,7 @@ def get_prs_paths(
     variables: List[str],
     start_date: str,
     end_date: str
-) -> List[str]:
+) -> List[Path]:
     """
     Generate file paths for ERA5 pressure level data files within a specified date range.
 
@@ -118,20 +118,17 @@ def get_prs_paths(
         end_date (str or datetime-like): The end date of the desired data range.
 
     Returns:
-        list of str: A list of file paths corresponding to the specified variables and date range.
+        list: A list of file paths corresponding to the specified variables and date range.
     """
     date_range = pd.date_range(start=start_date, end=end_date, freq="MS").strftime("%Y%m").tolist()
+    folder_path = Path(folder)
     if is_local_testing():
-        return [
-            os.path.join(folder, f"ERA5_PRS_{var}_{yyyymm}_r1440x721_day.nc")
-            for var in variables for yyyymm in date_range
-        ]
+        return [folder_path / f"ERA5_PRS_{var}_{yyyymm}_r1440x721_day.nc"
+                for var in variables for yyyymm in date_range]
 
     return [
-        os.path.join(
-            folder, "PRS", subfolder, var, yyyymm[:4],
+        folder_path / "PRS" / subfolder / var / yyyymm[:4] / \
             f"ERA5_PRS_{var}_{yyyymm}_r1440x721_day.nc"
-        )
         for var in variables for yyyymm in date_range
     ]
 
@@ -141,7 +138,7 @@ def get_sfc_paths(
     variables: List[str],
     start_date: str,
     end_date: str
-) -> List[str]:
+) -> List[Path]:
     """
     Generate file paths for ERA5 surface data files within a specified date range.
 
@@ -153,20 +150,16 @@ def get_sfc_paths(
         end_date (str or datetime-like): The end date of the desired data range.
 
     Returns:
-        list of str: A list of file paths corresponding to the specified variables and date range.
+        list: A list of file paths corresponding to the specified variables and date range.
     """
     date_range = pd.date_range(start=start_date, end=end_date, freq="MS").strftime("%Y%m").tolist()
+    folder_path = Path(folder)
     if is_local_testing():
-        return [
-            os.path.join(folder, f"ERA5_SFC_{var}_201801_r1440x721_day.nc")
-            for var in variables
-        ]
+        return [folder_path / f"ERA5_SFC_{var}_201801_r1440x721_day.nc" for var in variables]
 
     return [
-        os.path.join(
-            folder, "SFC", subfolder, var, yyyymm[:4],
+        folder_path / "SFC" / subfolder / var / yyyymm[:4] / \
             f"ERA5_SFC_{var}_{yyyymm}_r1440x721_day.nc"
-        )
         for var in variables for yyyymm in date_range
     ]
 
@@ -189,7 +182,6 @@ def get_pressure_level_data(folder: str, duration: slice) -> xr.Dataset:
     prs_paths = get_prs_paths(folder, 'day', pressure_level_vars, duration.start, duration.stop)
     return xr.open_mfdataset(prs_paths, combine='by_coords') \
             .sel(level=pressure_levels, time=duration)
-
 
 def get_surface_data(folder: str, duration: slice) -> xr.Dataset:
     """

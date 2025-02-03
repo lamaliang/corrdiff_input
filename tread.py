@@ -23,7 +23,7 @@ Functions:
 - generate_tread_output: Produce processed TReAD outputs and associated metrics.
 
 Dependencies:
-- `os`: For file path manipulation.
+- `pathlib.Path`: For file path manipulation.
 - `dask.array`: For efficient handling of large datasets with lazy evaluation.
 - `numpy`: For numerical operations.
 - `pandas`: For handling date ranges and date-time operations.
@@ -49,7 +49,7 @@ Notes:
 - The module is optimized for handling large datasets efficiently using Dask.
 
 """
-import os
+from pathlib import Path
 from typing import List, Tuple
 
 import dask.array as da
@@ -91,10 +91,8 @@ def get_file_paths(folder: str, start_date: str, end_date: str) -> List[str]:
         list: A list of file paths corresponding to each month in the date range.
     """
     date_range = pd.date_range(start=start_date, end=end_date, freq="MS").strftime("%Y%m").tolist()
-    return [
-        os.path.join(folder, f"wrfo2D_d02_{yyyymm}.nc")
-        for yyyymm in date_range
-    ]
+    folder_path = Path(folder)
+    return [folder_path / f"wrfo2D_d02_{yyyymm}.nc" for yyyymm in date_range]
 
 def get_tread_dataset(file: str, grid: xr.Dataset,
                       start_date: str, end_date: str) -> Tuple[xr.Dataset, xr.Dataset]:

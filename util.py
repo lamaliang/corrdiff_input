@@ -16,7 +16,7 @@ Functions:
 - is_local_testing: Checks whether the environment is set up for local testing.
 
 Dependencies:
-- `os`: For file and directory operations.
+- `pathlib.Path`: For file and directory operations.
 - `xesmf`: For regridding datasets.
 - `xarray`: For handling labeled multi-dimensional arrays.
 
@@ -39,7 +39,7 @@ Example Usage:
     is_valid, message = verify_dataset(dataset)
     print(message)
 """
-import os
+from pathlib import Path
 from typing import List, Dict
 
 import numpy as np
@@ -178,13 +178,16 @@ def dump_regrid_netcdf(
     Returns:
     None
     """
-    folder = f"./nc_dump/{subdir}/"
-    os.makedirs(folder, exist_ok=True)
+    folder = Path(f"./nc_dump/{subdir}")
+    folder.mkdir(parents=True, exist_ok=True)
 
-    tread_pre_regrid.to_netcdf(folder + "tread_pre_regrid.nc")
-    tread_post_regrid.to_netcdf(folder + "tread_post_regrid.nc")
-    era5_pre_regrid.to_netcdf(folder + "era5_pre_regrid.nc")
-    era5_post_regrid.to_netcdf(folder + "era5_post_regrid.nc")
+    for dataset, name in [
+        (tread_pre_regrid, "tread_pre_regrid.nc"),
+        (tread_post_regrid, "tread_post_regrid.nc"),
+        (era5_pre_regrid, "era5_pre_regrid.nc"),
+        (era5_post_regrid, "era5_post_regrid.nc")
+    ]:
+        dataset.to_netcdf(folder / name)
 
 def is_local_testing() -> bool:
     """
@@ -193,4 +196,4 @@ def is_local_testing() -> bool:
     Returns:
     bool: True if the environment is for local testing; False otherwise.
     """
-    return not os.path.exists("/lfs/archive/Reanalysis/")
+    return not Path("/lfs/archive/Reanalysis/").exists()

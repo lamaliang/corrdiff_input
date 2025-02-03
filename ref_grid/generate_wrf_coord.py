@@ -38,7 +38,7 @@ Notes:
   the required variables: `XLAT`, `XLONG`, `TER`, and `LANDMASK`.
 - The script automatically removes any existing output file at the specified `OUTPUT_FILE` path.
 """
-import os
+from pathlib import Path
 import numpy as np
 from netCDF4 import Dataset
 import xesmf as xe
@@ -108,8 +108,9 @@ else:
     lmask_regridded = lmask[slat_idx:elat_idx, slon_idx:elon_idx]
 
 # === Save to Output File ===
-if os.path.exists(OUTPUT_FILE):
-    os.remove(OUTPUT_FILE)
+output_path = Path(OUTPUT_FILE)
+if output_path.exists():
+    output_path.unlink()
 
 with Dataset(OUTPUT_FILE, mode="w", format="NETCDF4") as ncfile:
     # Create dimensions
