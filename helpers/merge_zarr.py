@@ -1,6 +1,35 @@
+"""
+Zarr Dataset Merging and Preprocessing Script
+
+This module merges multiple Zarr datasets containing atmospheric and meteorological 
+variables, processes key statistics, and saves the combined dataset as a new Zarr file.
+
+Functionality:
+--------------
+- Loads multiple Zarr files (`corrdiff_*.zarr`) from the current directory.
+- Concatenates datasets along the `time` dimension.
+- Computes statistical aggregations for ERA5 and CWB data:
+    - `era5_center`: Mean values of ERA5 variables across time and spatial dimensions.
+    - `era5_scale`: Standard deviation of ERA5 variables across time and spatial dimensions.
+    - `cwb_center`: Mean values of CWB variables across time and spatial dimensions.
+    - `cwb_scale`: Standard deviation of CWB variables across time and spatial dimensions.
+- Generates validity indicators (`cwb_valid`, `era5_valid`) marking all time steps as valid.
+- Drops the `era5_channel` variable for simplification.
+- Saves the final processed dataset as `combined.zarr`.
+
+Dependencies:
+-------------
+- `xarray` for dataset manipulation.
+- `dask.array` for handling large datasets efficiently.
+- `glob` for file discovery.
+
+Output:
+-------
+- The processed dataset is stored in `./combined.zarr`.
+"""
+import glob
 import xarray as xr
 import dask.array as da
-import glob
 
 # List and sort Zarr files
 zarr_files = sorted(glob.glob('./corrdiff_*.zarr'))
