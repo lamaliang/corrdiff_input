@@ -38,9 +38,9 @@ DEBUG = True  # Set to True to enable debugging
 
 ## 2️⃣ Extract and Dump Zarr Data
 
-Run `zarr_dump.py` to extract data slices:
+Run `zarr/dump_zarr.py` to extract data slices:
 
-`python zarr_dump.py <input_zarr_file> <output_directory>`
+`python zarr/dump_zarr.py <input_zarr_file> <output_directory>`
 
 ## 3️⃣ Generate REF grid file for output Zarr
 
@@ -98,11 +98,13 @@ REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
    ┣ 📜 generate_wrf_coord.py       # Generates REF grid
    ┣ 📜 TReAD_wrf_d02_info.nc       # TReAD grid used to generate REF grid
    ┗ 📜 wrf_208x208_grid_coords.nc  # Default 208 x 208 REF grid
+ ┣ 📂 zarr/
+   ┣ 📜 dump_zarr.py          # Zarr data extraction
+   ┗ 📜 merge_zarr.py         # Zarr file combination
  ┣ 📜 corrdiff_datagen.py     # Dataset generation script
  ┣ 📜 era5.py                 # ERA5 data processing
  ┣ 📜 tread.py                # TReAD data processing
  ┣ 📜 util.py                 # Utility functions for data transformation
- ┣ 📜 zarr_dump.py            # Zarr data extraction
  ┗ 📜 README.md               # Project documentation
 ```
 
@@ -126,8 +128,11 @@ REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
 🔹 util.py - General Utilities
   - Provides data transformation, regridding, and verification utilities
 
-🔹 zarr_dump.py - Inspect Zarr Datasets
+🔹 zarr/dump_zarr.py - Inspect Zarr Datasets
   - Extracts and saves data slices from Zarr files
+
+🔹 zarr/merge_zarr.py - Combine Zarr Datasets
+  - Combines and saves multiple Zarr files into one Zarr file.
 
 🔹 ref_grid/generate_wrf_coord.py - Extract Grid Coordinates
   - Extracts and saves grid coordinates from datasets
