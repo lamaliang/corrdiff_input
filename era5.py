@@ -18,7 +18,7 @@ Functions:
 - get_sfc_paths: Generate file paths for ERA5 surface data.
 - get_pressure_level_data: Retrieve and preprocess ERA5 pressure-level data.
 - get_surface_data: Retrieve and preprocess ERA5 surface data.
-- get_orography_data: Prepare and align orography (terrain height) data for ERA5 processing.
+- get_orography_data: Expand and align orography (terrain height) data for ERA5 processing.
 - get_era5_dataset: Retrieve and preprocess ERA5 datasets, including regridding and merging.
 - get_era5: Create a consolidated DataArray of ERA5 variables across channels.
 - get_era5_center: Compute mean values for ERA5 variables over time and spatial dimensions.
@@ -208,24 +208,46 @@ def get_surface_data(folder: str, duration: slice) -> xr.Dataset:
 
 def get_orography_data(terrain: xr.DataArray, time_coord: xr.DataArray) -> da.Array:
     """
-    Prepare and align orography (terrain height) data for ERA5 processing.
+    Expand and align orography (terrain height) data along the time dimension.
+
+    This function prepares a 2D terrain height dataset for integration with ERA5 data
+    by expanding it along the `time` dimension to match the provided time coordinate.
 
     Parameters:
-        terrain (xarray.DataArray): Terrain height data (e.g., from a reference grid).
-        time_coord (xarray.DataArray): Time coordinate to align the orography data with.
+        terrain (xarray.DataArray): A 2D DataArray representing terrain height
+                                    (shape: [south_north, west_east]).
+        time_coord (xarray.DataArray): A 1D DataArray containing time coordinates
+                                       to align the terrain data with.
 
     Returns:
-        dask.array.Array: A Dask array of the terrain height data, expanded along the time
-                          dimension and aligned with the given time coordinate.
+        dask.array.Array: A Dask-backed DataArray of terrain height data with an
+                          added time dimension (shape: [time, south_north, west_east]).
+
+    Raises:
+        ValueError: If `terrain` is not a 2D array.
 
     Notes:
-        - The `terrain` data is expanded along the `time` dimension to match the shape of ERA5
-          datasets.
-        - The returned data is aligned with the provided `time_coord` to ensure compatibility with
-          ERA5's temporal resolution.
+        - The function ensures that `terrain` remains unchanged spatially but is
+          repeated along the time dimension to match `time_coord`.
+        - The resulting DataArray is chunked appropriately (`time=1`) for efficient
+          processing when working with large datasets in Dask.
+        - This transformation is necessary to maintain consistency when merging with
+          ERA5 atmospheric variables that have a time dimension.
     """
-    return da.array(
-        terrain.expand_dims(time=time_coord).reindex(time=time_coord)
+    if terrain.ndim != 2:
+        raise ValueError(f"Expected `terrain` to be 2D (south_north, west_east),"
+                         f"but got shape {terrain.shape}")
+
+    # Expand along the "time" dimension to match era5_sfc
+    ter = terrain.expand_dims(time=time_coord.time)
+
+    # Ensure proper Dask array chunking (optional)
+    ter = ter.chunk({"time": 1})  # Adjust chunking to match other time-varying variables
+
+    # Assign to era5_out correctly
+    return xr.DataArray(
+        ter, dims=["time", "south_north", "west_east"],
+        coords={"time": time_coord.time}  # Ensure correct time coordinates
     )
 
 def get_era5_dataset(
@@ -285,8 +307,7 @@ def get_era5_dataset(
     era5_out = regrid_dataset(era5_crop, grid)
 
     # Append orography data from REF grid
-    ter = get_orography_data(terrain, era5_sfc.time)
-    era5_out["terrain_height"] = (list(era5_out["precitipation"].dims), ter)
+    era5_out["terrain_height"] = get_orography_data(terrain, era5_sfc.time)
 
     return era5_crop, era5_out
 
