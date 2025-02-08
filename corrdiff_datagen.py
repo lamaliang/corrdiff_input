@@ -135,7 +135,7 @@ def generate_output_dataset(tread_dir: str, era5_dir: str,
     out = xr.Dataset(
         coords={
             **{key: grid_coords[key] for key in GRID_COORD_KEYS},
-            "XTIME": np.datetime64("2025-01-15 18:00:00", "ns"),  # Placeholder for timestamp
+            "XTIME": np.datetime64("2025-02-08 16:00:00", "ns"),  # Placeholder for timestamp
             "time": tread_data["cwb"].time,
             "cwb_variable": tread_data["cwb_variable"],
             "era5_scale": ("era5_channel", era5_data["era5_scale"].data),

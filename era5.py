@@ -238,16 +238,10 @@ def get_orography_data(terrain: xr.DataArray, time_coord: xr.DataArray) -> da.Ar
         raise ValueError(f"Expected `terrain` to be 2D (south_north, west_east),"
                          f"but got shape {terrain.shape}")
 
-    # Expand along the "time" dimension to match era5_sfc
-    ter = terrain.expand_dims(time=time_coord.time)
-
-    # Ensure proper Dask array chunking (optional)
-    ter = ter.chunk({"time": 1})  # Adjust chunking to match other time-varying variables
-
-    # Assign to era5_out correctly
     return xr.DataArray(
-        ter, dims=["time", "south_north", "west_east"],
-        coords={"time": time_coord.time}  # Ensure correct time coordinates
+        terrain.expand_dims(time=time_coord.time).chunk({"time": 1}),
+        dims=["time", "south_north", "west_east"],
+        coords={"time": time_coord.time}
     )
 
 def get_era5_dataset(
