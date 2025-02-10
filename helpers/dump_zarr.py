@@ -52,8 +52,9 @@ def print_slices_over_time(ds: xr.Dataset, limit=10) -> None:
     """
     print("\n" + "-"*40)
 
-    end = min(ds.time.size, limit)
-    for t in ds.time[:end]:
+    start = 0
+    end = min(ds.time.size, start + limit)
+    for t in ds.time[start:end]:
         # Select the data for the current time step
         cwb_data = ds['cwb'].sel(time=t)
         era5_data = ds['era5'].sel(time=t)
