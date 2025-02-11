@@ -38,9 +38,9 @@ DEBUG = True  # Set to True to enable debugging
 
 ## 2️⃣ Extract and Dump Zarr Data
 
-Run `helpers/dump_zarr.py` to extract data slices:
+Run `helpers/dump_zarr.py` to dump Zarr data and extract data slices:
 
-`python helpers/dump_zarr.py <input_zarr_file> <output_directory>`
+`python helpers/dump_zarr.py <input_zarr_file>`
 
 ## 3️⃣ Generate REF grid file for output Zarr
 
