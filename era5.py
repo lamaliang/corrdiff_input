@@ -67,7 +67,7 @@ import xarray as xr
 from util import regrid_dataset, create_and_process_dataarray, is_local_testing
 
 ERA5_CHANNELS = [
-    {'name': 'tp', 'variable': 'precitipation'},
+    {'name': 'tp', 'variable': 'precipitation'},
     # 500
     {'name': 'z', 'pressure': 500, 'variable': 'geopotential_height'},
     {'name': 't', 'pressure': 500, 'variable': 'temperature'},
