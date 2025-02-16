@@ -36,6 +36,14 @@ Set `DEBUG=True` in `corrdiff_datagen.py` to dump ERA5 & TReAD pre- and post-reg
 DEBUG = True  # Set to True to enable debugging
 ```
 
+### Generate > 8-year dataset
+
+Run `datagen_n_merge.sh` to create multiple datasets and merge into one:
+
+`./datagen_n_merge.sh <start_date> <end_date>`
+
+The reason is to avoid OOM on BIG server given dataset with > 8-year time range.
+
 ## 2️⃣ Extract and Dump Zarr Data
 
 Run `helpers/dump_zarr.py` to dump Zarr data and extract data slices:
@@ -105,6 +113,7 @@ REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
  ┣ 📜 era5.py                 # ERA5 data processing
  ┣ 📜 tread.py                # TReAD data processing
  ┣ 📜 util.py                 # Utility functions for data transformation
+ ┣ 📜 datagen_n_merge.sh      # Shell script to create and merge datasets
  ┗ 📜 README.md               # Project documentation
 ```
 
@@ -127,6 +136,9 @@ REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
 
 🔹 util.py - General Utilities
   - Provides data transformation, regridding, and verification utilities
+
+🔹 datagen_n_merge.sh - Create and Merge Datasets
+  - Splits time range by 8-year interval, creates datasets per interval, and merges them into one
 
 🔹 helpers/dump_zarr.py - Inspect Zarr Datasets
   - Extracts and saves data slices from Zarr files
