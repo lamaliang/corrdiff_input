@@ -119,34 +119,34 @@ REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
 
 📜 Script Descriptions
 
-🔹 corrdiff_datagen.py - Generate Processed Datasets
+🔹 `corrdiff_datagen.py` - Generate Processed Datasets
   - Fetches datasets from multiple sources
   - Regrids them to match a common grid
   - Saves final dataset in Zarr format
 
-🔹 era5.py - ERA5 Data Processing
+🔹 `era5.py` - ERA5 Data Processing
   - Loads ERA5 dataset
   - Performs regridding and data aggregation
   - Computes mean, standard deviation, and validity
 
-🔹 tread.py - TReAD Data Processing
+🔹 `tread.py` - TReAD Data Processing
   - Loads TReAD dataset
   - Computes daily aggregated variables
   - Regrids dataset for analysis
 
-🔹 util.py - General Utilities
+🔹 `util.py` - General Utilities
   - Provides data transformation, regridding, and verification utilities
 
-🔹 datagen_n_merge.sh - Create and Merge Datasets
+🔹 `datagen_n_merge.sh` - Create and Merge Datasets
   - Splits time range by 8-year interval, creates datasets per interval, and merges them into one
 
-🔹 helpers/dump_zarr.py - Inspect Zarr Datasets
+🔹 `helpers/dump_zarr.py` - Inspect Zarr Datasets
   - Extracts and saves data slices from Zarr files
 
-🔹 helpers/merge_zarr.py - Combine Zarr Datasets
+🔹 `helpers/merge_zarr.py` - Combine Zarr Datasets
   - Combines and saves multiple Zarr files into one Zarr file.
 
-🔹 ref_grid/generate_wrf_coord.py - Extract Grid Coordinates
+🔹 `ref_grid/generate_wrf_coord.py` - Extract Grid Coordinates
   - Extracts and saves grid coordinates from datasets
 
 # 🎯 Why Use This Project?
