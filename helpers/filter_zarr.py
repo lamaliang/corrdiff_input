@@ -1,7 +1,7 @@
-import xarray as xr
-import numpy as np
 import re
 from datetime import datetime, timedelta
+import xarray as xr
+import numpy as np
 
 from merge_zarr import recompute_fields
 
@@ -17,7 +17,7 @@ def extract_overlapping_dates(file_path):
     """
     unique_dates = set()
 
-    with open(file_path, "r") as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         for line in file:
             match = re.match(r"(\d{10})-(\d{10})", line.strip())
             if match:
@@ -41,7 +41,7 @@ def read_dates_from_file(file_path):
     Returns:
         set: Unique set of dates in YYYYMMDD format.
     """
-    with open(file_path, "r") as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         return {line.strip() for line in file if re.match(r"\d{8}", line.strip())}
 
 def filter_zarr_by_dates(file1: str, file2: str, zarr_path: str, output_path: str) -> None:
@@ -71,7 +71,8 @@ def filter_zarr_by_dates(file1: str, file2: str, zarr_path: str, output_path: st
 
     # Convert dataset time to YYYYMMDD format
     available_dates = np.array(
-        [np.datetime_as_string(t, unit="D").replace("-", "") for t in ds.time.values]
+        [np.datetime_as_string(t, unit="D").replace("-", "")
+         for t in ds.time.values], dtype=str
     )
 
     # Filter to keep only extreme dates
