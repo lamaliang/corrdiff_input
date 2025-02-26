@@ -26,13 +26,16 @@ to retain only the specified dates.
    - Defines file paths and calls `filter_zarr_by_dates()` to generate a filtered dataset.
 """
 import re
+from typing import List
 from datetime import datetime, timedelta
 import xarray as xr
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 from merge_zarr import recompute_fields
 
-def extract_overlapping_dates(file_path):
+def extract_overlapping_dates(file_path: str) -> List[str]:
     """
     Reads a file containing date ranges and extracts unique overlapping dates.
 
@@ -58,7 +61,7 @@ def extract_overlapping_dates(file_path):
 
     return unique_dates
 
-def read_dates_from_file(file_path):
+def read_dates_from_file(file_path: str) -> List[str]:
     """
     Reads a file containing a list of individual dates.
 
@@ -70,6 +73,44 @@ def read_dates_from_file(file_path):
     """
     with open(file_path, "r", encoding="utf-8") as file:
         return {line.strip() for line in file if re.match(r"\d{8}", line.strip())}
+
+def plot_dates(dates: List[str], output_path: str) -> None:
+    """
+    Plots a stacked histogram showing the count of extreme weather events per year,
+    grouped by months.
+
+    Parameters:
+        dates (List[str]): List of date strings in 'YYYYMMDD' format.
+        output_path (str): Path to save the output plot.
+    """
+    # Extract years and months from YYYYMMDD format
+    year_month = [(date[:4], date[4:6]) for date in dates]
+
+    # Convert to DataFrame
+    df = pd.DataFrame(year_month, columns=["Year", "Month"])
+
+    # Convert Year and Month to categorical types for ordered plotting
+    df["Year"] = pd.Categorical(df["Year"], ordered=True)
+    df["Month"] = pd.Categorical(df["Month"], categories=[f"{i:02d}" for i in range(1, 13)], ordered=True)
+
+    # Count occurrences per year-month combination
+    counts = df.groupby(["Year", "Month"]).size().unstack(fill_value=0)
+
+    # Plot stacked bar chart
+    plt.figure(figsize=(12, 6))
+    counts.plot(kind="bar", stacked=True, colormap="tab10", figsize=(12, 6), edgecolor="black")
+
+    plt.xlabel("Year")
+    plt.ylabel("Count")
+    plt.title("Stacked Histogram of Extreme Weather Events per Year (Grouped by Month)")
+    plt.xticks(rotation=45)
+    plt.legend(title="Month", bbox_to_anchor=(1.05, 1), loc="upper left")
+    plt.grid(axis="y", linestyle="--", alpha=0.7)
+
+    # Save the plot
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
 
 def filter_zarr_by_dates(file1: str, file2: str, zarr_path: str, output_path: str) -> None:
     """
@@ -88,6 +129,8 @@ def filter_zarr_by_dates(file1: str, file2: str, zarr_path: str, output_path: st
 
     # Merge, sort, and remove duplicates
     extreme_dates = sorted(dates_from_file1.union(dates_from_file2))
+
+    plot_dates(extreme_dates, "../data/extreme_dates/extreme_dates_histogram.png")
 
     # Save to output file
     # with open("../data/extreme_dates/extreme_dates.txt", "w") as file:
