@@ -24,12 +24,6 @@ to retain only the specified dates.
 
 4. `main()`
    - Defines file paths and calls `filter_zarr_by_dates()` to generate a filtered dataset.
-
-### **Usage**
-#### **As a standalone script**
-To execute the script and generate a filtered Zarr dataset:
-```bash
-python filter_zarr.py
 """
 import re
 from datetime import datetime, timedelta
@@ -94,6 +88,11 @@ def filter_zarr_by_dates(file1: str, file2: str, zarr_path: str, output_path: st
 
     # Merge, sort, and remove duplicates
     extreme_dates = sorted(dates_from_file1.union(dates_from_file2))
+
+    # Save to output file
+    # with open("../data/extreme_dates/extreme_dates.txt", "w") as file:
+    #     for date in extreme_dates:
+    #         file.write(date + "\n")
 
     # Open the Zarr dataset
     ds = xr.open_zarr(zarr_path, consolidated=True)
