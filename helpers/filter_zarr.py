@@ -1,3 +1,36 @@
+"""
+Module for filtering a Zarr dataset based on extreme weather event dates.
+
+This module extracts and merges extreme event dates from two text files—one containing
+typhoon days and another listing extreme precipitation events—and filters a Zarr dataset
+to retain only the specified dates.
+
+### **Main Features**
+- Extracts dates from a file containing date **ranges**.
+- Extracts dates from a file containing **individual dates**.
+- Merges, sorts, and filters dates to keep only **extreme event occurrences**.
+- Filters an **xarray Zarr dataset** to include only these extreme dates.
+- Saves the **filtered dataset** to a new Zarr file.
+
+### **Key Functions**
+1. `extract_overlapping_dates(file_path: str) -> set`
+   - Extracts and returns unique dates from a file containing **date ranges**.
+
+2. `read_dates_from_file(file_path: str) -> set`
+   - Extracts and returns unique dates from a file containing **individual date entries**.
+
+3. `filter_zarr_by_dates(file1: str, file2: str, zarr_path: str, output_path: str) -> None`
+   - Filters a Zarr dataset by merging extreme dates from two sources and keeping only those dates.
+
+4. `main()`
+   - Defines file paths and calls `filter_zarr_by_dates()` to generate a filtered dataset.
+
+### **Usage**
+#### **As a standalone script**
+To execute the script and generate a filtered Zarr dataset:
+```bash
+python filter_zarr.py
+"""
 import re
 from datetime import datetime, timedelta
 import xarray as xr
@@ -71,8 +104,8 @@ def filter_zarr_by_dates(file1: str, file2: str, zarr_path: str, output_path: st
 
     # Convert dataset time to YYYYMMDD format
     available_dates = np.array(
-        [np.datetime_as_string(t, unit="D").replace("-", "")
-         for t in ds.time.values], dtype=str
+        [str(np.datetime_as_string(t, unit="D")).replace("-", "")
+         for t in ds.time.values],dtype=str
     )
 
     # Filter to keep only extreme dates
