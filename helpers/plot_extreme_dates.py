@@ -31,7 +31,7 @@ INPUT_FILE = "../data/extreme_dates/extreme_dates.txt"
 OUTTPUT_FILE = "../data/extreme_dates/extreme_dates_histogram.png"
 
 # Load the file
-with open(INPUT_FILE, "r") as file:
+with open(INPUT_FILE, "r", encoding="utf-8") as file:
     dates = [line.strip() for line in file if line.strip().isdigit()]
 
 # Extract years from YYYYMMDD format
