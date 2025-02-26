@@ -18,7 +18,8 @@ Functions:
 - get_sfc_paths: Generate file paths for ERA5 surface data.
 - get_pressure_level_data: Retrieve and preprocess ERA5 pressure-level data.
 - get_surface_data: Retrieve and preprocess ERA5 surface data.
-- get_orography_data: Expand and align orography (terrain height) data for ERA5 processing.
+- get_era5_orography: Retrieve and preprocess ERA5 orography data.
+- get_tread_orography: Expand and align REF grid orography data for ERA5 processing.
 - get_era5_dataset: Retrieve and preprocess ERA5 datasets, including regridding and merging.
 - get_era5: Create a consolidated DataArray of ERA5 variables across channels.
 - get_era5_center: Compute mean values for ERA5 variables over time and spatial dimensions.
@@ -96,8 +97,9 @@ ERA5_CHANNELS = [
     {'name': 'u10', 'variable': 'eastward_wind_10m'},
     {'name': 'v10', 'variable': 'northward_wind_10m'},
     {'name': 'msl', 'variable': 'mean_sea_level_pressure'},
-    # Orography channel from REF grid
-    {'name': 'TER', 'variable': 'terrain_height'},
+    # Orography channels
+    {'name': 'oro', 'variable': 'terrain_height'}, # to replace with TER
+    {'name': 'wtp', 'variable': 'weighted_precipitation'}, # tp * TER / oro
 ]
 
 def get_prs_paths(
@@ -196,7 +198,8 @@ def get_surface_data(folder: str, duration: slice) -> xr.Dataset:
         xarray.Dataset: Processed surface data.
     """
     surface_vars = list(dict.fromkeys(
-        ch['name'] for ch in ERA5_CHANNELS if 'pressure' not in ch and ch['name'] not in {'TER'}
+        ch['name'] for ch in ERA5_CHANNELS
+        if 'pressure' not in ch and ch['name'] not in {'oro', 'wtp'}
     ))
 
     sfc_paths = get_sfc_paths(folder, 'day', surface_vars, duration.start, duration.stop)
@@ -206,7 +209,22 @@ def get_surface_data(folder: str, duration: slice) -> xr.Dataset:
 
     return sfc_data
 
-def get_orography_data(terrain: xr.DataArray, time_coord: xr.DataArray) -> da.Array:
+def get_era5_orography(folder, time_coord):
+    """
+    Retrieve and process orography data from ERA5 files.
+
+    Parameters:
+        folder (str): Base directory containing ERA5 orography data files.
+        time_coord (xarray.DataArray): Time coordinate to align with.
+
+    Returns:
+        xarray.Dataset: Processed orography data.
+    """
+    topo = xr.open_mfdataset(folder + '/ERA5_oro_r1440x721.nc')[['oro']]
+    topo = topo.expand_dims(time=time_coord)
+    return topo.reindex(time=time_coord)
+
+def get_tread_orography(terrain: xr.DataArray, time_coord: xr.DataArray) -> da.Array:
     """
     Expand and align orography (terrain height) data along the time dimension.
 
@@ -285,11 +303,10 @@ def get_era5_dataset(
     # Process pressure levels, surface data, and orography data
     era5_prs = get_pressure_level_data(folder, duration)
     era5_sfc = get_surface_data(folder, duration)
+    era5_topo = get_era5_orography(folder, era5_sfc.time)
 
     # Merge prs, sfc and rename variables.
-    era5 = xr.merge([era5_prs, era5_sfc]).rename({
-        ch['name']: ch['variable'] for ch in ERA5_CHANNELS if ch['name'] not in {'TER'}
-    })
+    era5 = xr.merge([era5_prs, era5_sfc, era5_topo])
 
     # Crop to Taiwan domain given ERA5 is global data.
     lat, lon = grid.XLAT, grid.XLONG
@@ -300,9 +317,12 @@ def get_era5_dataset(
     # Based on REF grid, regrid TReAD data over spatial dimensions for all timestamps.
     era5_out = regrid_dataset(era5_crop, grid)
 
-    # Append orography data from REF grid if orography is in the channels.
-    if any(channel.get('variable') == 'terrain_height' for channel in ERA5_CHANNELS):
-        era5_out["terrain_height"] = get_orography_data(terrain, era5_sfc.time)
+    # Compute weighted precipitation and replace orography data with TReAD one
+    tread_oro = get_tread_orography(terrain, era5_sfc.time)
+    era5_out["wtp"] = era5_out["tp"] * tread_oro / era5_out["oro"]
+    era5_out["oro"] = tread_oro
+
+    era5_out = era5_out.rename({ ch['name']: ch['variable'] for ch in ERA5_CHANNELS })
 
     return era5_crop, era5_out
 
