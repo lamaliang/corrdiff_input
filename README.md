@@ -86,10 +86,10 @@ REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
 
 ```
 📦 corrdiff_input
- ┣ 📂 data/                   # Input data (NetCDF files of ERA5 and TReAD datasets)
+ ┣ 📂 data/                  # Input data (NetCDF files of ERA5 and TReAD datasets)
    ┣ 📂 tread/
      ┗ 📜 wrfo2D_d02_201801.nc
-   ┗ 📂 era5/
+   ┣ 📂 era5/
      ┣ 📜 ERA5_PRS_q_201801_r1440x721_day.nc
      ┣ 📜 ERA5_PRS_r_201801_r1440x721_day.nc
      ┣ 📜 ERA5_PRS_t_201801_r1440x721_day.nc
@@ -102,12 +102,16 @@ REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
      ┣ 📜 ERA5_SFC_tp_201801_r1440x721_day.nc
      ┣ 📜 ERA5_SFC_u10_201801_r1440x721_day.nc
      ┗ 📜 ERA5_SFC_v10_201801_r1440x721_day.nc
+   ┗ 📂 extreme_dates/
+     ┣ 📜 extreme_dates.txt
+     ┗ 📜 extreme_dates_histogram.png
  ┣ 📂 ref_grid/
    ┣ 📜 generate_wrf_coord.py       # Generates REF grid
    ┣ 📜 TReAD_wrf_d02_info.nc       # TReAD grid used to generate REF grid
    ┗ 📜 wrf_208x208_grid_coords.nc  # Default 208 x 208 REF grid
  ┣ 📂 helpers/
-   ┣ 📜 dump_zarr.py          # Zarr data extraction
+   ┣ 📜 dump_zarr.py          # Zarr data inspection
+   ┣ 📜 filter_zarr.py        # Zarr data extraction
    ┗ 📜 merge_zarr.py         # Zarr file combination
  ┣ 📜 corrdiff_datagen.py     # Dataset generation script
  ┣ 📜 era5.py                 # ERA5 data processing
@@ -141,7 +145,10 @@ REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
   - Splits time range by 8-year interval, creates datasets per interval, and merges them into one
 
 🔹 `helpers/dump_zarr.py` - Inspect Zarr Datasets
-  - Extracts and saves data slices from Zarr files
+  - Inspects structure and data slices in Zarr files.
+
+🔹 `helpers/filter_zarr.py` - Extract Zarr Datasets
+  - Extracts data slices from one Zarr file and saves to another.
 
 🔹 `helpers/merge_zarr.py` - Combine Zarr Datasets
   - Combines and saves multiple Zarr files into one Zarr file.

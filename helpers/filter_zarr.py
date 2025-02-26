@@ -91,7 +91,8 @@ def plot_dates(dates: List[str], output_path: str) -> None:
 
     # Convert Year and Month to categorical types for ordered plotting
     df["Year"] = pd.Categorical(df["Year"], ordered=True)
-    df["Month"] = pd.Categorical(df["Month"], categories=[f"{i:02d}" for i in range(1, 13)], ordered=True)
+    df["Month"] = pd.Categorical(df["Month"],
+                                 categories=[f"{i:02d}" for i in range(1, 13)], ordered=True)
 
     # Count occurrences per year-month combination
     counts = df.groupby(["Year", "Month"]).size().unstack(fill_value=0)
