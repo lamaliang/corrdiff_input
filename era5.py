@@ -300,13 +300,13 @@ def get_era5_dataset(
     """
     duration = slice(str(start_date), str(end_date))
 
-    # Process pressure levels, surface data, and orography data
-    era5_prs = get_pressure_level_data(folder, duration)
+    # Process and merge surface, pressure levels, and orography data
     era5_sfc = get_surface_data(folder, duration)
-    era5_topo = get_era5_orography(folder, era5_sfc.time)
-
-    # Merge prs, sfc and rename variables.
-    era5 = xr.merge([era5_prs, era5_sfc, era5_topo])
+    era5 = xr.merge([
+        era5_sfc,
+        get_pressure_level_data(folder, duration),
+        get_era5_orography(folder, era5_sfc.time)
+    ])
 
     # Crop to Taiwan domain given ERA5 is global data.
     lat, lon = grid.XLAT, grid.XLONG
