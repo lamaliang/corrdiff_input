@@ -103,7 +103,7 @@ def plot_dates(dates: List[str], output_path: str) -> None:
 
     plt.xlabel("Year")
     plt.ylabel("Count")
-    plt.title("Stacked Histogram of Extreme Weather Events per Year (Grouped by Month)")
+    plt.title(f"Extreme Weather Dates per Year (total: {len(dates)})")
     plt.xticks(rotation=45)
     plt.legend(title="Month", bbox_to_anchor=(1.05, 1), loc="upper left")
     plt.grid(axis="y", linestyle="--", alpha=0.7)
