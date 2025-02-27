@@ -44,9 +44,9 @@ Run `datagen_n_merge.sh` to create multiple datasets and merge into one:
 
 The reason is to avoid OOM on BIG server given dataset with > 8-year time range.
 
-## 2️⃣ Extract and Dump Zarr Data
+## 2️⃣ Dump Zarr Data
 
-Run `helpers/dump_zarr.py` to dump Zarr data and extract data slices:
+Run `helpers/dump_zarr.py` to dump Zarr data and its data slices:
 
 `python helpers/dump_zarr.py <input_zarr_file>`
 

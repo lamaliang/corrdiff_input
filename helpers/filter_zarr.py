@@ -91,15 +91,15 @@ def plot_dates(dates: List[str], output_path: str) -> None:
 
     # Convert Year and Month to categorical types for ordered plotting
     df["Year"] = pd.Categorical(df["Year"], ordered=True)
-    df["Month"] = pd.Categorical(df["Month"],
-                                 categories=[f"{i:02d}" for i in range(1, 13)], ordered=True)
+    df["Month"] = pd.Categorical(df["Month"], categories=[f"{i:02d}" for i in range(1, 13)],
+                                 ordered=True)
 
     # Count occurrences per year-month combination
-    counts = df.groupby(["Year", "Month"]).size().unstack(fill_value=0)
+    counts = df.groupby(["Year", "Month"], observed=False).size().unstack(fill_value=0)
 
     # Plot stacked bar chart
     plt.figure(figsize=(12, 6))
-    counts.plot(kind="bar", stacked=True, colormap="tab10", figsize=(12, 6), edgecolor="black")
+    counts.plot(kind="bar", stacked=True, colormap="Paired", figsize=(12, 6), edgecolor="black")
 
     plt.xlabel("Year")
     plt.ylabel("Count")
