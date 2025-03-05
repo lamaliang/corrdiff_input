@@ -58,6 +58,8 @@ lat = nc_in.variables['XLAT'][:]
 lon = nc_in.variables['XLONG'][:]
 ter = nc_in.variables['TER'][:]
 lmask = nc_in.variables['LANDMASK'][:]
+slope = nc_in.variables['SLOPE'][:]
+aspect = nc_in.variables['ASPECT'][:]
 
 # Check if extrapolation is needed
 print(f"Input grid (lat, lon) = ({lat.shape[0]}, {lon.shape[1]})")
@@ -77,6 +79,8 @@ if ny > lat.shape[0] or nx > lon.shape[1]:
             "lon": (["south_north", "west_east"], lon),
             "ter": (["south_north", "west_east"], ter),
             "lmask": (["south_north", "west_east"], lmask),
+            "slope": (["south_north", "west_east"], slope),
+            "aspect": (["south_north", "west_east"], aspect),
         }
     )
     new_grid = xr.Dataset(
@@ -88,6 +92,8 @@ if ny > lat.shape[0] or nx > lon.shape[1]:
     regridder = xe.Regridder(ds, new_grid, method="bilinear", extrap_method="nearest_s2d")
     ter_regridded = regridder(ds["ter"])
     lmask_regridded = regridder(ds["lmask"])
+    slope_regridded = regridder(ds["slope"])
+    aspect_regridded = regridder(ds["aspect"])
     lat_grid, lon_grid = new_lat_grid, new_lon_grid
 else:
     print("Cropping to smaller grid...")
@@ -106,6 +112,8 @@ else:
     lon_grid = lon[slat_idx:elat_idx, slon_idx:elon_idx]
     ter_regridded = ter[slat_idx:elat_idx, slon_idx:elon_idx]
     lmask_regridded = lmask[slat_idx:elat_idx, slon_idx:elon_idx]
+    slope_regridded = slope[slat_idx:elat_idx, slon_idx:elon_idx]
+    aspect_regridded = aspect[slat_idx:elat_idx, slon_idx:elon_idx]
 
 # === Save to Output File ===
 output_path = Path(OUTPUT_FILE)
@@ -122,18 +130,24 @@ with Dataset(OUTPUT_FILE, mode="w", format="NETCDF4") as ncfile:
     nlon = ncfile.createVariable("XLONG", "f4", ("south_north", "west_east"))
     nter = ncfile.createVariable("TER", "f4", ("south_north", "west_east"))
     nlmask = ncfile.createVariable("LANDMASK", "f4", ("south_north", "west_east"))
+    nslope = ncfile.createVariable("SLOPE", "f4", ("south_north", "west_east"))
+    naspect = ncfile.createVariable("ASPECT", "f4", ("south_north", "west_east"))
 
     # Assign values
     nlat[:, :] = lat_grid
     nlon[:, :] = lon_grid
     nter[:, :] = ter_regridded
     nlmask[:, :] = lmask_regridded
+    nslope[:, :] = slope_regridded
+    naspect[:, :] = aspect_regridded
 
     # Add attributes
     nlat.units = "degrees_north"
     nlon.units = "degrees_east"
     nter.units = "meters"
     nlmask.units = "land mask"
+    nslope.units = "slope"
+    naspect.units = "degree"
     ncfile.setncattr("coordinates", "XLAT XLONG")
     ncfile.setncattr("description", f"New CorrDiff Training REF grid {ny}x{nx}")
 
