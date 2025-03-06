@@ -62,28 +62,30 @@ DEBUG = False  # Set to True to enable debugging
 REF_GRID_NC = "./ref_grid/wrf_208x208_grid_coords.nc"
 GRID_COORD_KEYS = ["XLAT", "XLONG"]
 
-def get_ref_grid() -> Tuple[xr.Dataset, dict, xr.DataArray]:
+def get_ref_grid() -> Tuple[xr.Dataset, dict, dict]:
     """
-    Retrieves the reference grid dataset, its coordinates, and terrain data.
+    Load the reference grid dataset and extract its coordinates and terrain-related variables.
 
-    This function opens a predefined reference grid NetCDF file and extracts:
-    - Latitude and longitude grids as a new xarray.Dataset.
-    - Specific coordinate keys for use in downstream processing.
-    - Terrain data ('TER') for use in regridding or terrain height processing.
+    This function reads a predefined reference grid NetCDF file and extracts:
+    - A dataset containing latitude (`lat`) and longitude (`lon`) grids.
+    - A dictionary of coordinate arrays specified by `GRID_COORD_KEYS`.
+    - A dictionary of terrain-related variables (`TER`, `SLOPE`, `ASPECT`) for use in
+      regridding and terrain processing.
 
     Returns:
         tuple:
             - grid (xarray.Dataset): A dataset containing the latitude ('lat') and
-              longitude ('lon') grids.
-            - grid_coords (dict): A dictionary of extracted coordinate arrays
-              specified by `GRID_COORD_KEYS`.
-            - terrain (xarray.DataArray): Terrain height data ('TER') from the reference grid.
+              longitude ('lon') grids for spatial alignment.
+            - grid_coords (dict): A dictionary of extracted coordinate arrays defined
+              by `GRID_COORD_KEYS` for downstream processing.
+            - terrain_layers (dict): A dictionary containing terrain-related variables
+              ('ter', 'slope', 'aspect') from the reference grid.
 
     Notes:
         - The reference grid file path is defined by the global constant `REF_GRID_NC`.
         - The coordinate keys to extract are defined in `GRID_COORD_KEYS`.
-        - This function assumes the reference grid file contains a variable named 'TER'
-          for terrain height.
+        - The terrain-related variables are returned as a dictionary with lowercase keys
+          for consistency in downstream processing.
     """
     ref = xr.open_dataset(REF_GRID_NC, engine='netcdf4')
     grid = xr.Dataset({ "lat": ref.XLAT, "lon": ref.XLONG })
