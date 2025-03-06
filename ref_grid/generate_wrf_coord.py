@@ -1,42 +1,40 @@
 """
-Grid Extraction and NetCDF Output Generation.
+NetCDF Grid Extraction and Resampling.
 
-This script extracts a grid subset centered around a specified latitude and longitude
-from an input NetCDF file. The extracted grid data is then saved into a new NetCDF file
-with appropriate metadata.
+This script extracts a subgrid or resamples the input NetCDF file to a new
+resolution centered at a specified latitude and longitude.
 
 Features:
-- Extracts a grid of specified dimensions (`ny` x `nx`) centered on given coordinates.
-- Handles bounds to ensure slicing remains within the data range.
-- Copies relevant variables (`XLAT`, `XLONG`, `TER`, `LANDMASK`) from the input file.
-- Saves the extracted grid into a new NetCDF file with metadata and attributes.
+- **Grid Extraction**: Extracts a `(ny, nx)` subset centered on (`clon`, `clat`).
+- **Grid Resampling**: Uses bilinear interpolation (xESMF) if upscaling is needed.
+- **Metadata Preservation**: Copies essential variables
+  (`XLAT`, `XLONG`, `TER`, `LANDMASK`, `SLOPE`, `ASPECT`).
+- **Automatic File Handling**: Deletes existing output before saving.
 
-Parameters:
-- clon, clat (float): Center longitude and latitude of the grid.
-- ny, nx (int): Dimensions of the grid to extract.
-- INPUT_FILE (str): Path to the input NetCDF file containing the source data.
-- OUTPUT_FILE (str): Path where the extracted grid will be saved.
+### Parameters:
+- `clon`, `clat` (float): Center longitude & latitude for extraction.
+- `ny`, `nx` (int): Target grid size.
+- `INPUT_FILE` (str): Path to the input NetCDF file.
+- `OUTPUT_FILE` (str): Path for the extracted/resampled output.
 
-Workflow:
-1. Open the input NetCDF file and read the required variables.
-2. Locate the center point based on the specified coordinates.
-3. Compute slicing indices for the desired grid dimensions.
-4. Extract the grid and relevant variables.
-5. Create a new NetCDF file and save the extracted data with metadata.
+### Workflow:
+1. **Load Input Data**: Reads `XLAT`, `XLONG`, terrain (`TER`), and land properties.
+2. **Determine Extraction Mode**:
+   - **Grid Smaller Than Input** → Crop around center.
+   - **Grid Larger Than Input** → Use xESMF to resample.
+3. **Save Extracted/Resampled Data**: Writes to `OUTPUT_FILE` in NETCDF4 format.
 
-Dependencies:
-- `os`: For file handling.
-- `numpy`: For numerical operations.
-- `netCDF4`: For working with NetCDF files.
+### Dependencies:
+- `numpy`, `netCDF4`, `xesmf`, `xarray`, `pathlib`.
 
-Example Usage:
-    1. Update the parameters `clon`, `clat`, `ny`, `nx`, and `INPUT_FILE`.
-    2. Run the script to generate an output file containing the grid.
+### Example Usage:
+1. Update `clon`, `clat`, `ny`, `nx`, and `INPUT_FILE`.
+2. Run the script to generate `OUTPUT_FILE`.
 
-Notes:
-- Ensure the input file (`INPUT_FILE`) exists and contains
-  the required variables: `XLAT`, `XLONG`, `TER`, and `LANDMASK`.
-- The script automatically removes any existing output file at the specified `OUTPUT_FILE` path.
+### Notes:
+- **Ensure `INPUT_FILE` contains required variables**.
+- **Supports both cropping and upscaling** via interpolation.
+- **Output file is automatically replaced if it exists**.
 """
 from pathlib import Path
 import numpy as np
@@ -52,103 +50,74 @@ ny, nx = 208, 208               # Desired grid dimensions
 INPUT_FILE = './TReAD_wrf_d02_info.nc'
 OUTPUT_FILE = f"./wrf_{ny}x{nx}_grid_coords.nc"
 
-# Load input dataset
+# Load input dataset, including:
+# - latitude & longitude
+# - terrain height & landmask
+# - orography slope & aspect
 nc_in = Dataset(INPUT_FILE, mode='r')
-lat = nc_in.variables['XLAT'][:]
-lon = nc_in.variables['XLONG'][:]
-ter = nc_in.variables['TER'][:]
-lmask = nc_in.variables['LANDMASK'][:]
-slope = nc_in.variables['SLOPE'][:]
-aspect = nc_in.variables['ASPECT'][:]
+lat, lon = nc_in.variables['XLAT'][:], nc_in.variables['XLONG'][:]
+ter, lmask = nc_in.variables['TER'][:], nc_in.variables['LANDMASK'][:]
+slope, aspect = nc_in.variables['SLOPE'][:], nc_in.variables['ASPECT'][:]
 
 # Check if extrapolation is needed
 print(f"Input grid (lat, lon) = ({lat.shape[0]}, {lon.shape[1]})")
 if ny > lat.shape[0] or nx > lon.shape[1]:
     print("Extrapolating to larger grid...")
+
     # Create new lat/lon grid
-    lat_min, lat_max = lat.min(), lat.max()
-    lon_min, lon_max = lon.min(), lon.max()
-    new_lat = np.linspace(lat_min, lat_max, ny)
-    new_lon = np.linspace(lon_min, lon_max, nx)
-    new_lat_grid, new_lon_grid = np.meshgrid(new_lat, new_lon, indexing='ij')
+    new_lat = np.linspace(lat.min(), lat.max(), ny)
+    new_lon = np.linspace(lon.min(), lon.max(), nx)
+    new_grid = xr.Dataset({
+        "lat": (["south_north", "west_east"], np.meshgrid(new_lat, new_lon, indexing='ij')[0]),
+        "lon": (["south_north", "west_east"], np.meshgrid(new_lat, new_lon, indexing='ij')[1])
+    })
 
     # Use xESMF for extrapolation
-    ds = xr.Dataset(
-        {
-            "lat": (["south_north", "west_east"], lat),
-            "lon": (["south_north", "west_east"], lon),
-            "ter": (["south_north", "west_east"], ter),
-            "lmask": (["south_north", "west_east"], lmask),
-            "slope": (["south_north", "west_east"], slope),
-            "aspect": (["south_north", "west_east"], aspect),
-        }
+    regridder = xe.Regridder(
+        xr.Dataset({"lat": (["south_north", "west_east"], lat),
+                    "lon": (["south_north", "west_east"], lon)}),
+        new_grid, method="bilinear", extrap_method="nearest_s2d"
     )
-    new_grid = xr.Dataset(
-        {
-            "lat": (["south_north", "west_east"], new_lat_grid),
-            "lon": (["south_north", "west_east"], new_lon_grid),
-        }
-    )
-    regridder = xe.Regridder(ds, new_grid, method="bilinear", extrap_method="nearest_s2d")
-    ter_regridded = regridder(ds["ter"])
-    lmask_regridded = regridder(ds["lmask"])
-    slope_regridded = regridder(ds["slope"])
-    aspect_regridded = regridder(ds["aspect"])
-    lat_grid, lon_grid = new_lat_grid, new_lon_grid
+
+    lat_grid, lon_grid = new_grid["lat"].values, new_grid["lon"].values
+    ter, lmask, slope, aspect = [regridder(xr.DataArray(var))
+                                 for var in (ter, lmask, slope, aspect)]
 else:
     print("Cropping to smaller grid...")
+
     # Find center indices
-    idy = np.abs(lat[:, 0] - clat).argmin()
-    idx = np.abs(lon[0, :] - clon).argmin()
+    idy, idx = np.abs(lat[:, 0] - clat).argmin(), np.abs(lon[0, :] - clon).argmin()
 
     # Calculate slicing indices
-    slat_idx = max(0, idy - ny // 2)
-    elat_idx = min(lat.shape[0], slat_idx + ny)
-    slon_idx = max(0, idx - nx // 2)
-    elon_idx = min(lon.shape[1], slon_idx + nx)
+    slat, elat = max(0, idy - ny // 2), min(lat.shape[0], idy + ny // 2)
+    slon, elon = max(0, idx - nx // 2), min(lon.shape[1], idx + nx // 2)
 
     # Crop the grid
-    lat_grid = lat[slat_idx:elat_idx, slon_idx:elon_idx]
-    lon_grid = lon[slat_idx:elat_idx, slon_idx:elon_idx]
-    ter_regridded = ter[slat_idx:elat_idx, slon_idx:elon_idx]
-    lmask_regridded = lmask[slat_idx:elat_idx, slon_idx:elon_idx]
-    slope_regridded = slope[slat_idx:elat_idx, slon_idx:elon_idx]
-    aspect_regridded = aspect[slat_idx:elat_idx, slon_idx:elon_idx]
+    lat_grid, lon_grid = lat[slat:elat, slon:elon], lon[slat:elat, slon:elon]
+    ter, lmask, slope, aspect = [var[slat:elat, slon:elon]
+                                 for var in (ter, lmask, slope, aspect)]
 
 # === Save to Output File ===
 output_path = Path(OUTPUT_FILE)
 if output_path.exists():
-    output_path.unlink()
+    output_path.unlink(missing_ok=True)
 
 with Dataset(OUTPUT_FILE, mode="w", format="NETCDF4") as ncfile:
     # Create dimensions
     ncfile.createDimension("south_north", lat_grid.shape[0])
     ncfile.createDimension("west_east", lon_grid.shape[1])
 
-    # Create variables
-    nlat = ncfile.createVariable("XLAT", "f4", ("south_north", "west_east"))
-    nlon = ncfile.createVariable("XLONG", "f4", ("south_north", "west_east"))
-    nter = ncfile.createVariable("TER", "f4", ("south_north", "west_east"))
-    nlmask = ncfile.createVariable("LANDMASK", "f4", ("south_north", "west_east"))
-    nslope = ncfile.createVariable("SLOPE", "f4", ("south_north", "west_east"))
-    naspect = ncfile.createVariable("ASPECT", "f4", ("south_north", "west_east"))
+    for name, data, unit in [("XLAT", lat_grid, "degrees_north"),
+                             ("XLONG", lon_grid, "degrees_east"),
+                             ("TER", ter, "meters"),
+                             ("LANDMASK", lmask, "land mask"),
+                             ("SLOPE", slope, "slope"),
+                             ("ASPECT", aspect, "degree")]:
+        var = ncfile.createVariable(name, "f4", ("south_north", "west_east"))
+        var[:, :] = data
+        var.units = unit
 
-    # Assign values
-    nlat[:, :] = lat_grid
-    nlon[:, :] = lon_grid
-    nter[:, :] = ter_regridded
-    nlmask[:, :] = lmask_regridded
-    nslope[:, :] = slope_regridded
-    naspect[:, :] = aspect_regridded
-
-    # Add attributes
-    nlat.units = "degrees_north"
-    nlon.units = "degrees_east"
-    nter.units = "meters"
-    nlmask.units = "land mask"
-    nslope.units = "slope"
-    naspect.units = "degree"
     ncfile.setncattr("coordinates", "XLAT XLONG")
-    ncfile.setncattr("description", f"New CorrDiff Training REF grid {ny}x{nx}")
+    ncfile.setncattr("description", f"CorrDiff REF grid {ny}x{nx}")
 
 print(f"Output written to => {OUTPUT_FILE}")
