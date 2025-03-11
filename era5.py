@@ -99,8 +99,8 @@ ERA5_CHANNELS = [
     {'name': 'msl', 'variable': 'mean_sea_level_pressure'},
     # Orography channels
     {'name': 'oro', 'variable': 'terrain_height'}, # to replace with TER
-    {'name': 'slope', 'variable': 'terrain_slope'},
-    {'name': 'aspect', 'variable': 'terrain_aspect'},
+    {'name': 'slope', 'variable': 'slope_angle'},
+    {'name': 'aspect', 'variable': 'slope_aspect'},
     {'name': 'wtp', 'variable': 'weighted_precipitation'}, # tp * TER / oro
 ]
 
