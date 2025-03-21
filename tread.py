@@ -68,6 +68,7 @@ TREAD_CHANNELS_ORIGINAL = {
     "UV10": "windspeed_10m",
     "RH2": "relative_humidity_2m",
     "PSFC": "sea_level_pressure",
+    "Q2": "specific_humidity_2m",
 }
 TREAD_CHANNELS = {
     # Baseline
@@ -76,6 +77,7 @@ TREAD_CHANNELS = {
     # C1.x
     "T2MAX": "maximum_temperature_2m",
     "T2MIN": "minimum_temperature_2m",
+    "SWDNB": "downward_solar_flux_surface",
 }
 
 def get_file_paths(folder: str, start_date: str, end_date: str) -> List[str]:
@@ -131,6 +133,7 @@ def get_tread_dataset(file: str, grid: xr.Dataset,
     tread['TP'] = (tread_surface['RAINC'] + tread_surface['RAINNC']).resample(time='1D').sum()
     tread['T2MAX'] = (tread_surface['T2']).resample(time='1D').max()
     tread['T2MIN'] = (tread_surface['T2']).resample(time='1D').min()
+    tread['SWDNB'] = tread_surface['ACSWDNB'].resample(time='1D').sum() / 86400.0
 
     tread = tread[list(TREAD_CHANNELS.keys())].rename(TREAD_CHANNELS)
 
