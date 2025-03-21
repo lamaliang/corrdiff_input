@@ -77,7 +77,7 @@ TREAD_CHANNELS = {
     # C1.x
     "T2MAX": "maximum_temperature_2m",
     "T2MIN": "minimum_temperature_2m",
-    "MSWDNB": "downward_solar_flux_surface",
+    "MSWDNB": "mean_downward_solar_flux_surface",
 }
 
 def get_file_paths(folder: str, start_date: str, end_date: str) -> List[str]:
@@ -111,7 +111,7 @@ def get_tread_dataset(file: str, grid: xr.Dataset,
         tuple: A tuple containing the original and regridded TReAD datasets.
     """
     channel_keys_original = list(TREAD_CHANNELS_ORIGINAL.keys())
-    surface_vars = ['RAINC', 'RAINNC'] + channel_keys_original
+    surface_vars = ['RAINC', 'RAINNC', 'ACSWDNB'] + channel_keys_original
 
     start_datetime = pd.to_datetime(str(start_date), format='%Y%m%d')
     end_datetime = pd.to_datetime(str(end_date), format='%Y%m%d')
